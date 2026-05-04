@@ -1,0 +1,45 @@
+from django.contrib.auth.password_validation import validate_password
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
+class RegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate_password(self, value):
+
+        validate_password(value)
+        return value
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    user_id = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        validate_password(value)
+        return value
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'is_staff', 'is_active', 'date_joined']
+        read_only_fields = fields
+
+
+class InitiateEmailVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    user_id = serializers.CharField()
+    token = serializers.CharField()

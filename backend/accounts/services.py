@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
 
 User = get_user_model()
 
@@ -44,26 +45,54 @@ class AccountService:
 
         token_generator = PasswordResetTokenGenerator()
         token = token_generator.make_token(user)
-        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-        return uidb64, token
+        user_idb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        return user_idb64, token
 
     def confirm_password_reset(
-        self, uidb64: str, token: str, new_password: str
+        self, user_idb64: str, token: str, new_password: str
     ) -> bool:
         """
         Validate the reset token and set the new password.
         Returns True on success, False otherwise.
         """
-        # Decode the uid
+        # Decode the user_idb64
         try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(pk=uid)
+            user_id = force_str(urlsafe_base64_decode(user_idb64))
+            user = User.objects.get(pk=user_id)
         except (User.DoesNotExist, ValueError):
             return False
 
         token_generator = PasswordResetTokenGenerator()
         if token_generator.check_token(user, token):
             user.set_password(new_password)
+            user.save()
+            return True
+        return False
+
+    def initiate_email_verification(self, email: str) -> tuple[str, str] | None:
+        """
+        Generate verification uid+token for a user.
+        Returns (uidb64, token) if user exists, else None.
+        """
+        user = self.get_user_by_email(email)
+        if user is None:
+            return None
+        token = default_token_generator.make_token(user)
+        user_idb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        return user_idb64, token
+
+    def verify_email(self, user_idb64: str, token: str) -> bool:
+        """
+        Confirm email address.
+        Returns True if token is valid and user is activated.
+        """
+        try:
+            user_id = force_str(urlsafe_base64_decode(user_idb64))
+            user = User.objects.get(pk=user_id)
+        except (User.DoesNotExist, ValueError):
+            return False
+        if default_token_generator.check_token(user, token):
+            user.is_active = True
             user.save()
             return True
         return False

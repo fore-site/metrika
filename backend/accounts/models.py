@@ -42,10 +42,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     is_active = models.BooleanField(
         _('active'),
-        default=True,
+        default=False,
         help_text=_(
             'Designates whether this user should be treated as active. '
-            'Unselect this instead of deleting accounts.'
+            'Default is false pending email verification.'
         ),
     )
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
