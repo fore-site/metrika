@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -10,7 +11,7 @@ User = get_user_model()
 class AccountService:
     """Public service for all user operations."""
 
-    def create_user(self, email: str, password: str) -> User:
+    def create_user(self, email: str, name: str, password: str) -> User:
         """
         Register a new user.
         Raises ValueError if the email is already taken.
@@ -18,7 +19,7 @@ class AccountService:
         if User.objects.filter(email=email).exists():
             raise ValueError("A user with that email already exists.")
 
-        return User.objects.create_user(email=email, password=password)
+        return User.objects.create_user(email=email, password=password, name=name)
 
     def get_user_by_email(self, email: str) -> User | None:
         """Return the user for a given email, or None."""
@@ -96,3 +97,29 @@ class AccountService:
             user.save()
             return True
         return False
+
+
+    def change_password(self, user: User, current_password: str, new_password: str) -> bool:
+        """Return True if password changed, False if current password is wrong."""
+        if not user.check_password(current_password):
+            return False
+        validate_password(new_password, user=user)
+        user.set_password(new_password)
+        user.save()
+        return True
+
+    def resend_verification(self, email: str) -> tuple[str, str] | None:
+        """Generate new verification token if user exists and is inactive."""
+        user = self.get_user_by_email(email)
+        if user is None or user.is_active:
+            return None
+        token = default_token_generator.make_token(user)
+        user_idb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        return user_idb64, token
+
+    def delete_account(self, user: User, password: str) -> bool:
+        """Delete user if password matches. Cascades to sites, events, etc. later."""
+        if not user.check_password(password):
+            return False
+        user.delete()
+        return True

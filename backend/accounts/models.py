@@ -34,6 +34,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     """Custom user model – email is the unique identifier."""
     email = models.EmailField(_('email address'), unique=True, db_index=True)
+    name = models.CharField(_('full name'), max_length=150, blank=False)
 
     is_staff = models.BooleanField(
         _('staff status'),

@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'accounts',
     'sites',
     'analytics',
@@ -103,8 +104,6 @@ STATIC_URL = 'static/'
 AUTH_USER_MODEL = 'accounts.User'
 
 FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='http://localhost:3000')
-
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

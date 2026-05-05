@@ -8,6 +8,7 @@ User = get_user_model()
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+    name = serializers.CharField(max_length=2150)
 
     def validate_password(self, value):
 
@@ -29,10 +30,18 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         return value
 
 
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        validate_password(value)
+        return value
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'is_staff', 'is_active', 'date_joined']
+        fields = ['id', 'email', 'name', 'is_staff', 'is_active', 'date_joined']
         read_only_fields = fields
 
 
@@ -43,3 +52,11 @@ class InitiateEmailVerificationSerializer(serializers.Serializer):
 class VerifyEmailSerializer(serializers.Serializer):
     user_id = serializers.CharField()
     token = serializers.CharField()
+
+
+class ResendVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class DeleteAccountSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True)
