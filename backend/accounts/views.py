@@ -1,10 +1,9 @@
 from django.conf import settings
 from rest_framework import generics, permissions, status
-from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from common.response import api_response
 from email.services import EmailService
-
 from .services import AccountService
 from .serializers import (
     RegisterSerializer,
@@ -14,11 +13,8 @@ from .serializers import (
     UserSerializer,
 )
 
+
 class RegisterView(generics.CreateAPIView):
-    """
-    Register a new user. Sends a verification email.
-    The account remains inactive until the email is verified.
-    """
     permission_classes = [permissions.AllowAny]
     serializer_class = RegisterSerializer
 
@@ -32,42 +28,87 @@ class RegisterView(generics.CreateAPIView):
         try:
             user = AccountService().create_user(email, password)
         except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return api_response(
+                status.HTTP_400_BAD_REQUEST,
+                message=str(e),
+            )
 
-        # Generate verification link and send it
+        # Send verification email
         result = AccountService().initiate_email_verification(email)
         if result:
-            uidb64, token = result
-            EmailService().send_verification_email(email, uidb64, token)
+            user_idb64, token = result
+            EmailService().send_verification_email(email, user_idb64, token)
 
-        return Response(
-            {'detail': 'Registration successful. Check your email to verify your account.'},
-            status=status.HTTP_201_CREATED,
+        return api_response(
+            status.HTTP_201_CREATED,
+            message='Registration successful. Kindly check your email to verify your account.',
         )
 
 
 class VerifyEmailView(APIView):
-    """Activate a user account via an emailed verification link."""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        uidb64 = serializer.validated_data['uid']
+        user_idb64 = serializer.validated_data['user_id']
         token = serializer.validated_data['token']
 
-        success = AccountService().verify_email(uidb64, token)
+        success = AccountService().verify_email(user_idb64, token)
         if success:
-            return Response({'detail': 'Email verified successfully.'})
-        return Response(
-            {'detail': 'Invalid or expired verification link.'},
-            status=status.HTTP_400_BAD_REQUEST,
+            return api_response(
+                status.HTTP_200_OK,
+                message='Email verified successfully.',
+            )
+        return api_response(
+            status.HTTP_400_BAD_REQUEST,
+            message='Invalid or expired verification link.',
         )
 
 
+from rest_framework_simplejwt.views import TokenObtainPairView as BaseLoginView
+
+class LoginView(BaseLoginView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            return api_response(
+                status.HTTP_200_OK,
+                data=response.data,
+                message='Login successful.',
+            )
+        return response
+
+
+from rest_framework_simplejwt.views import TokenRefreshView as BaseRefreshView
+
+class TokenRefreshView(BaseRefreshView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            return api_response(
+                status.HTTP_200_OK,
+                data=response.data,
+                message='Token refreshed successfully.',
+            )
+        return response
+
+
+from rest_framework_simplejwt.views import TokenVerifyView as BaseVerifyView
+
+class TokenVerifyView(BaseVerifyView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            return api_response(
+                status.HTTP_200_OK,
+                message='Token is valid.',
+            )
+        return response
+
+
 class PasswordResetView(APIView):
-    """Initiate password reset. Always returns a generic success message."""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -77,40 +118,44 @@ class PasswordResetView(APIView):
 
         result = AccountService().initiate_password_reset(email)
         if result:
-            uidb64, token = result
-            EmailService().send_password_reset_email(email, uidb64, token)
+            user_idb64, token = result
+            EmailService().send_password_reset_email(email, user_idb64, token)
 
-        # Always return the same message to prevent email enumeration
-        return Response(
-            {'detail': 'If that email is registered, a password reset link has been sent.'}
+        return api_response(
+            status.HTTP_200_OK,
+            message='A password reset link has been sent.',
         )
 
 
 class PasswordResetConfirmView(APIView):
-    """Confirm password reset using the token sent via email."""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        uidb64 = serializer.validated_data['uid']
+        user_idb64 = serializer.validated_data['user_id']
         token = serializer.validated_data['token']
         new_password = serializer.validated_data['new_password']
 
-        success = AccountService().confirm_password_reset(uidb64, token, new_password)
+        success = AccountService().confirm_password_reset(user_idb64, token, new_password)
         if success:
-            return Response({'detail': 'Password has been reset successfully.'})
-        return Response(
-            {'detail': 'Invalid or expired reset token.'},
-            status=status.HTTP_400_BAD_REQUEST,
+            return api_response(
+                status.HTTP_200_OK,
+                message='Password has been reset successfully.',
+            )
+        return api_response(
+            status.HTTP_400_BAD_REQUEST,
+            message='Invalid or expired reset token.',
         )
 
 
 class MeView(APIView):
-    """Return the current authenticated user's profile."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        return Response(UserSerializer(user).data)
+        serializer = UserSerializer(request.user)
+        return api_response(
+            status.HTTP_200_OK,
+            data=serializer.data,
+        )

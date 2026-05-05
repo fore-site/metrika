@@ -43,6 +43,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
 }
 
 ROOT_URLCONF = 'config.urls'
@@ -85,8 +86,8 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
     {
-        'NAME': 'accounts.validators.SymbolPasswordValidator',
-    }
+        'NAME': 'common.validators.SymbolPasswordValidator',
+    },
 ]
 
 LANGUAGE_CODE = 'en-us'
