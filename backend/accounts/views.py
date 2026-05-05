@@ -9,6 +9,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from common.response import api_response
 from email_service.services import EmailService
+from email_service.exceptions import EmailTransientError, EmailPermanentError
 from .services import AccountService
 from .serializers import (
     RegisterSerializer,
@@ -20,6 +21,9 @@ from .serializers import (
     PasswordChangeSerializer,
     ResendVerificationSerializer,
 )
+import logging 
+
+logger = logging.getLogger(__name__)
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
@@ -45,8 +49,20 @@ class RegisterView(generics.CreateAPIView):
         result = AccountService().initiate_email_verification(email)
         if result:
             user_idb64, token = result
-            EmailService().send_verification_email(email, user_idb64, token)
-
+            try:
+                EmailService().send_verification_email(email, user_idb64, token, name=name)
+            except EmailTransientError as e:
+                logger.error(f"Transient error sending verification email to {email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="Failed to send verification email. Please request a new one."
+                )
+            except EmailPermanentError as e:
+                logger.error(f"Permanent error sending verification email to {email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    message="Invalid email address. Please provide a valid email."
+                )
         return api_response(
             status.HTTP_201_CREATED,
             message='Registration successful. Kindly check your email to verify your account.',
@@ -120,9 +136,23 @@ class PasswordResetView(APIView):
 
         result = AccountService().initiate_password_reset(email)
         if result:
+            user = AccountService().get_user_by_email(email)
+            name = user.name if user else ''
             user_idb64, token = result
-            EmailService().send_password_reset_email(email, user_idb64, token)
-
+            try:
+                EmailService().send_password_reset_email(email, user_idb64, token, name=name)
+            except EmailTransientError as e:
+                logger.error(f"Transient error sending password reset email to {email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="Failed to send password reset email. Please request a new one."
+                )
+            except EmailPermanentError as e:
+                logger.error(f"Permanent error sending password reset email to {email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    message="Invalid email address. Please provide a valid email."
+                )
         return api_response(
             status.HTTP_200_OK,
             message='A password reset link has been sent.',
@@ -194,8 +224,23 @@ class ResendVerificationView(APIView):
 
         result = AccountService().resend_verification(email)
         if result:
+            user = AccountService().get_user_by_email(email)
+            name = user.name if user else ''
             user_idb64, token = result
-            EmailService().send_verification_email(email, user_idb64, token)
+            try:
+                EmailService().send_verification_email(email, user_idb64, token, name=name)
+            except EmailTransientError as e:
+                logger.error(f"Transient error sending verification email to {email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="Failed to send verification email. Please request a new one."
+                )
+            except EmailPermanentError as e:
+                logger.error(f"Permanent error sending verification email to {email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    message="Invalid email address. Please provide a valid email."
+                )
 
         return api_response(
             status.HTTP_200_OK,

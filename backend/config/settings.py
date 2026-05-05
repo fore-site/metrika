@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'sites',
     'analytics',
     'tracking',
+    'email_service',
 ]
 
 MIDDLEWARE = [
