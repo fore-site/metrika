@@ -13,10 +13,7 @@ class JSONFormatter(logging.Formatter):
             'function': record.funcName,
             'line': record.lineno,
         }
-        # Safely include correlation_id if present (filter may not always run)
-        correlation_id = getattr(record, 'correlation_id', None)
-        if correlation_id:
-            log_obj['correlation_id'] = correlation_id
+
         if record.exc_info and record.exc_info[1]:
             log_obj['exception'] = str(record.exc_info[1])
 

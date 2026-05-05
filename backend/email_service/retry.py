@@ -1,6 +1,7 @@
 import time
 import logging
 
+from common.metrics import email_retries_total
 from .exceptions import EmailTransientError
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ def retry_on_transient(max_retries=3, base_delay=1, backoff_factor=2):
                             f'Retry {attempt+1}/{max_retries} for {func.__name__} '
                             f'due to: {e}. Waiting {delay}s.'
                         )
+                        email_retries_total.inc()
                         time.sleep(sleep_seconds)
                     else:
                         logger.error(f'All retries exhausted for {func.__name__}')
