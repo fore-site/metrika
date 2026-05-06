@@ -23,6 +23,7 @@ from .serializers import (
     RegisterSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
+    TokenObtainPairResponseSerializer,
     VerifyEmailSerializer,
     UserSerializer,
     DeleteAccountSerializer,
@@ -91,7 +92,16 @@ class RegisterView(generics.CreateAPIView):
             message='Registration successful. Kindly check your email to verify your account.',
         )
 
-
+@extend_schema(
+    summary='Verify email after registration',
+    description="Sets a registered user's inactive status to active.",
+    request=VerifyEmailSerializer,
+    responses={
+        200: envelope_success(
+            description='Email successfully verified.'
+        ),
+    },
+)
 class VerifyEmailView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -113,7 +123,16 @@ class VerifyEmailView(APIView):
             message='Invalid or expired verification link.',
         )
 
-
+@extend_schema(
+    summary='Obtain JWT tokens',
+    description="Returns an access token in the body and sets an httpOnly refresh token cookie.",
+    responses={
+        200: envelope_success(
+            data_serializer=TokenObtainPairResponseSerializer(),
+            description='Login successful.'
+        ),
+    },
+)
 class LoginView(BaseLoginView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -142,6 +161,16 @@ class LoginView(BaseLoginView):
             return res
         return response
 
+@extend_schema(
+    summary='Obtain new access token',
+    description="Returns an access token in the body.",
+    responses={
+        200: envelope_success(
+            data_serializer=TokenObtainPairResponseSerializer(),
+            description='Token successfully refreshed.'
+        ),
+    },
+)
 @method_decorator(csrf_protect, name='dispatch')
 class TokenRefreshView(BaseRefreshView):
     def post(self, request, *args, **kwargs):
@@ -188,6 +217,15 @@ class TokenRefreshView(BaseRefreshView):
         return response
 
 
+@extend_schema(
+    summary='Verify JWT token validity',
+    description="Verifies if a JWT token is valid.",
+    responses={
+        200: envelope_success(
+            description='Token is valid.'
+        ),
+    },
+)
 class TokenVerifyView(BaseVerifyView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -199,6 +237,16 @@ class TokenVerifyView(BaseVerifyView):
         return response
 
 
+@extend_schema(
+    summary='Reset password',
+    description="Sends a password reset link to user's mail.",
+    request=PasswordResetSerializer,
+    responses={
+        200: envelope_success(
+            description='A password reset link has been sent.'
+        ),
+    },
+)
 class PasswordResetView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -231,7 +279,16 @@ class PasswordResetView(APIView):
             message='A password reset link has been sent.',
         )
 
-
+@extend_schema(
+    summary='Confirm password reset',
+    description="Confirms new password has been set.",
+    request=PasswordResetSerializer,
+    responses={
+        200: envelope_success(
+            description='Password has been reset successfully.'
+        ),
+    },
+)
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -254,7 +311,17 @@ class PasswordResetConfirmView(APIView):
             message='Invalid or expired reset token.',
         )
 
-
+@extend_schema(
+    summary='View and update user profile',
+    description="Returns user's current or updated detail.",
+    request=NameChangeSerializer,
+    responses={
+        200: envelope_success(
+            data_serializer=UserSerializer(),
+            description='A password reset link has been sent.'
+        ),
+    },
+)
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -275,6 +342,16 @@ class MeView(APIView):
         return api_response(200, data=user_serializer.data, message='Name updated.')
 
 
+@extend_schema(
+    summary='Change user password',
+    description="Sets new password for an authenticated user and deletes httponly refresh token cookie.",
+    request=PasswordChangeSerializer,
+    responses={
+        200: envelope_success(
+            description='Password changed successfully.'
+        ),
+    },
+)
 class PasswordChangeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -300,7 +377,16 @@ class PasswordChangeView(APIView):
         res.delete_cookie(settings.REFRESH_TOKEN_COOKIE_NAME, path='/api/auth/token/refresh/')
         return res
 
-
+@extend_schema(
+    summary='Resend email verification link',
+    description="Resends a newly generated email verification link to the user's email.",
+    request=ResendVerificationSerializer,
+    responses={
+        200: envelope_success(
+            description='A new verification link has been sent.'
+        ),
+    },
+)
 class ResendVerificationView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -334,6 +420,15 @@ class ResendVerificationView(APIView):
             message='A new verification link has been sent.',
         )
 
+@extend_schema(
+    summary='Logout user',
+    description="Retrieves and blacklists refresh token from httponly cookie.",
+    responses={
+        200: envelope_success(
+            description='Logged out successfully.'
+        ),
+    },
+)
 @method_decorator(csrf_protect, name='dispatch')
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -359,7 +454,16 @@ class LogoutView(APIView):
         res.delete_cookie(settings.REFRESH_TOKEN_COOKIE_NAME, path='/api/auth/token/refresh/')
         return res
 
-
+@extend_schema(
+    summary='Change email',
+    description="Initiates email change and sends verification link to the new email address.",
+    request=InitiateEmailChangeSerializer,
+    responses={
+        200: envelope_success(
+            description='A verification link has been sent to the new email address.'
+        ),
+    },
+)
 class InitiateEmailChangeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -380,6 +484,16 @@ class InitiateEmailChangeView(APIView):
         return api_response(status.HTTP_200_OK, message='A verification email has been sent to the new address.')
 
 
+@extend_schema(
+    summary='Confirm email change',
+    description="Confirm new email of user.",
+    request=ConfirmEmailChangeSerializer,
+    responses={
+        200: envelope_success(
+            description='Email address updated successfully.'
+        ),
+    },
+)
 class ConfirmEmailChangeView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -403,6 +517,16 @@ class ConfirmEmailChangeView(APIView):
             message='Invalid or expired verification link.',
         )
 
+@extend_schema(
+    summary='Delete account',
+    description="Destructive action to permanently delete account from database.",
+    request=DeleteAccountSerializer,
+    responses={
+        200: envelope_success(
+            description='Account deleted successfully.'
+        ),
+    },
+)
 class DeleteAccountView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

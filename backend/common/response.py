@@ -4,7 +4,6 @@ def api_response(status_code: int, data=None, message: str = '', errors=None) ->
     """Build a consistent JSON envelope."""
     is_success = 200 <= status_code < 300
     body = {
-        'status': 'success' if is_success else 'error',
         'message': message or default_message(status_code),
     }
 

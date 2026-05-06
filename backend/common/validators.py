@@ -20,6 +20,7 @@ class SymbolPasswordValidator:
 
 
 def validate_name_field(value):
+    """ Validate name passed into into register view or name change view."""
     # Strip leading/trailing whitespace and collapse internal spaces
     cleaned = ' '.join(value.split())
     if not cleaned:

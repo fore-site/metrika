@@ -1,12 +1,13 @@
 from drf_spectacular.utils import inline_serializer
+from drf_spectacular.openapi import AutoSchema
 from rest_framework import serializers
 
-# ---- Error components ----
+# Error components
 
 error_source = inline_serializer(
     name='ErrorSource',
     fields={'pointer': serializers.CharField()},
-    source=None,           # ← explicit
+    source=None,
 )
 
 error_object = inline_serializer(
@@ -14,16 +15,15 @@ error_object = inline_serializer(
     fields={
         'code': serializers.CharField(),
         'detail': serializers.CharField(),
-        'source': error_source,          # note: field name 'source', not DRF source argument
+        'source': error_source,
     },
-    source=None,           # ← fix for the assertion
+    source=None,
 )
 
-# ---- Envelope functions ----
+# Envelope functions
 
 def envelope_success(data_serializer=None, description='Success response'):
     props = {
-        'status': serializers.CharField(default='success'),
         'data': data_serializer if data_serializer else serializers.DictField(default={}),
         'message': serializers.CharField(default=''),
     }
@@ -33,9 +33,26 @@ def envelope_error():
     return inline_serializer(
         name='ErrorEnvelope',
         fields={
-            'status': serializers.CharField(default='error'),
             'message': serializers.CharField(),
             'errors': serializers.ListField(child=error_object),
         },
         source=None,
     )
+
+
+class EnvelopeAutoSchema(AutoSchema):
+    """
+    Automatically adds standard error responses (401, 403, 500) to every endpoint.
+    """
+    def get_override_responses(self):
+        responses = super().get_override_responses()
+        if not responses:
+            responses = {}
+        # Only add if not already defined
+        if '401' not in responses:
+            responses['401'] = envelope_error()
+        if '403' not in responses:
+            responses['403'] = envelope_error()
+        if '500' not in responses:
+            responses['500'] = envelope_error()
+        return responses
