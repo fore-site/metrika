@@ -394,8 +394,8 @@ class AuthTests(TestCase):
     def test_initiate_email_change_success(self):
         # Setup authenticated user
         self.register_user()
-        uid, token = AccountService().initiate_email_verification(self.valid_email)
-        self.verify_user(uid, token)
+        user_id, token = AccountService().initiate_email_verification(self.valid_email)
+        self.verify_user(user_id, token)
         login_res = self.login_user()
         self.authenticate(login_res.data['data']['access'])
 
@@ -416,8 +416,8 @@ class AuthTests(TestCase):
 
     def test_initiate_email_change_wrong_password(self):
         self.register_user()
-        uid, token = AccountService().initiate_email_verification(self.valid_email)
-        self.verify_user(uid, token)
+        user_id, token = AccountService().initiate_email_verification(self.valid_email)
+        self.verify_user(user_id, token)
         login_res = self.login_user()
         self.authenticate(login_res.data['data']['access'])
 
@@ -435,8 +435,8 @@ class AuthTests(TestCase):
         User.objects.create_user(email=other_email, password='OtherP@ss1', name='Other')
 
         self.register_user()
-        uid, token = AccountService().initiate_email_verification(self.valid_email)
-        self.verify_user(uid, token)
+        user_id, token = AccountService().initiate_email_verification(self.valid_email)
+        self.verify_user(user_id, token)
         login_res = self.login_user()
         self.authenticate(login_res.data['data']['access'])
 
@@ -459,8 +459,8 @@ class AuthTests(TestCase):
     def test_confirm_email_change_success(self):
         # Setup authenticated user and initiate change
         self.register_user()
-        uid_verify, token_verify = AccountService().initiate_email_verification(self.valid_email)
-        self.verify_user(uid_verify, token_verify)
+        user_id_verify, token_verify = AccountService().initiate_email_verification(self.valid_email)
+        self.verify_user(user_id_verify, token_verify)
         login_res = self.login_user()
         self.authenticate(login_res.data['data']['access'])
 
@@ -474,15 +474,15 @@ class AuthTests(TestCase):
         email_body = mail.outbox[-1].body  # last email sent (email change verify)
         # Find URL: it's a plain text email containing the URL. Parse the query string.
         import re
-        url_match = re.search(r'http://localhost:3000/email-change/confirm\?uid=([^&]+)&token=([^\s]+)', email_body)
+        url_match = re.search(r'http://localhost:3000/email-change/confirm\?user_id=([^&]+)&token=([^\s]+)', email_body)
         self.assertIsNotNone(url_match)
-        uidb64 = url_match.group(1)
+        user_idb64 = url_match.group(1)
         token = url_match.group(2)
 
         # Confirm the change (public endpoint, no auth)
         response = self.client.post(
             reverse('email-change-confirm'),
-            {'uid': uidb64, 'token': token},
+            {'user_id': user_idb64, 'token': token},
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -498,7 +498,7 @@ class AuthTests(TestCase):
     def test_confirm_email_change_invalid_token(self):
         response = self.client.post(
             reverse('email-change-confirm'),
-            {'uid': 'invalid', 'token': 'invalid'},
+            {'user_id': 'invalid', 'token': 'invalid'},
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -507,13 +507,13 @@ class AuthTests(TestCase):
     def test_confirm_email_change_cache_expired(self):
         # We'll simulate by setting the cache value to something and then manually clearing it before confirm.
         self.register_user()
-        uid_verify, token_verify = AccountService().initiate_email_verification(self.valid_email)
-        self.verify_user(uid_verify, token_verify)
+        user_id_verify, token_verify = AccountService().initiate_email_verification(self.valid_email)
+        self.verify_user(user_id_verify, token_verify)
         login_res = self.login_user()
         self.authenticate(login_res.data['data']['access'])
 
         new_email = 'newemail@example.com'
-        uidb64, token = AccountService().initiate_email_change(
+        user_idb64, token = AccountService().initiate_email_change(
             User.objects.get(email=self.valid_email), new_email, self.valid_password
         )
         # Clear the cache to simulate expiry
@@ -522,7 +522,7 @@ class AuthTests(TestCase):
 
         response = self.client.post(
             reverse('email-change-confirm'),
-            {'uid': uidb64, 'token': token},
+            {'user_id': user_idb64, 'token': token},
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

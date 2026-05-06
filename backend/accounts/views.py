@@ -33,6 +33,21 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+from drf_spectacular.utils import extend_schema
+from common.openapi import envelope_success, envelope_error
+
+@extend_schema(
+    summary='Register a new user',
+    description='Creates an inactive user and sends a verification email.',
+    request=RegisterSerializer,
+    responses={
+        201: envelope_success(
+            description='Registration successful – check email for verification link.'
+        ),
+        400: envelope_error(),
+    },
+)
 class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = RegisterSerializer
