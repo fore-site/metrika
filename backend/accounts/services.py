@@ -4,9 +4,19 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
+from django.core.cache import cache
+from django.conf import settings
 
 User = get_user_model()
 
+class EmailChangeTokenGenerator(PasswordResetTokenGenerator):
+    key_salt = "email-change"
+
+class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
+    key_salt = "email-verification"
+
+email_change_token_generator = EmailChangeTokenGenerator()
+email_verification_token_generator = EmailVerificationTokenGenerator()
 
 class AccountService:
     """Public service for all user operations."""
@@ -78,7 +88,7 @@ class AccountService:
         user = self.get_user_by_email(email)
         if user is None:
             return None
-        token = default_token_generator.make_token(user)
+        token = email_verification_token_generator.make_token(user)
         user_idb64 = urlsafe_base64_encode(force_bytes(user.pk))
         return user_idb64, token
 
@@ -92,7 +102,7 @@ class AccountService:
             user = User.objects.get(pk=user_id)
         except (User.DoesNotExist, ValueError):
             return False
-        if default_token_generator.check_token(user, token):
+        if email_verification_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
             return True
@@ -116,6 +126,55 @@ class AccountService:
         token = default_token_generator.make_token(user)
         user_idb64 = urlsafe_base64_encode(force_bytes(user.pk))
         return user_idb64, token
+    
+
+    def update_name(self, user: User, new_name: str) -> User:
+        """Update the user's name."""
+        user.name = new_name
+        user.save()
+        return user
+
+
+    def initiate_email_change(self, user: User, new_email: str, password: str) -> tuple[str, str]:
+        """Initiate email change process. 
+        Returns (user_idb64, token) for the new email, else raises ValueError for existing emails or invalid password.
+        """
+        if not user.check_password(password):
+            raise ValueError("Current password is incorrect.")
+        if User.objects.filter(email=new_email).exclude(pk=user.pk).exists():
+            raise ValueError("A user with that email already exists.")
+        token = email_change_token_generator.make_token(user)
+        user_idb64 = urlsafe_base64_encode(force_bytes(user.pk))
+
+        cache_key = f"email_change:{user.pk}"
+        cache.set(cache_key, (user_idb64, token), timeout=settings.EMAIL_CHANGE_TIMEOUT)
+        return user_idb64, token
+
+
+    def confirm_email_change(self, user_idb64: str, token: str, new_email: str):
+        """Returns (user, old email) on success or None"""
+        try:
+            user_id = force_str(urlsafe_base64_decode(user_idb64))
+            user = User.objects.get(pk=user_id)
+        except (User.DoesNotExist, ValueError):
+            return None
+        
+        if not email_change_token_generator.check_token(user, token):
+            return None
+
+        cache_key = f"email_change:{user.pk}"
+        new_email = cache.get(cache_key)
+        if not new_email:
+            return None
+        
+
+        old_email = user.email
+        user.email = new_email
+        user.save()
+        cache.delete(cache_key)
+        return user, old_email
+
+    
 
     def delete_account(self, user: User, password: str) -> bool:
         """Delete user if password matches. Cascades to sites, events, etc. later."""

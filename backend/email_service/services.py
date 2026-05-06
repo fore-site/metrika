@@ -66,6 +66,21 @@ class EmailService:
             to_email=email,
         )
 
+    @retry_on_transient(max_retries=3, base_delay=1, backoff_factor=2)
+    def send_email_change_verification(self, new_email: str, uidb64: str, token: str, name: str = ''):
+        verification_url = self._build_url('/email-change/confirm', uid=uidb64, token=token)
+        context = {'verification_url': verification_url, 'name': name}
+        html_body = render_to_string('email/email_change_verify.html', context)
+        text_body = f'Hi {name},\n\nPlease confirm your new email: {verification_url}'
+        self._send_mail('Confirm your new email address', text_body, html_body, new_email)
+
+    @retry_on_transient(max_retries=3, base_delay=1, backoff_factor=2)
+    def send_email_change_notification(self, old_email: str, new_email: str, name: str = ''):
+        context = {'name': name, 'old_email': old_email, 'new_email': new_email}
+        html_body = render_to_string('email/email_change_notify.html', context)
+        text_body = f'Hi {name},\n\nYour email was changed from {old_email} to {new_email}.'
+        self._send_mail('Your email address has been changed', text_body, html_body, old_email)
+
     # Private helpers
     @staticmethod
     def _send_mail(subject, text_body, html_body, to_email):

@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 from decouple import config
 
@@ -22,6 +23,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'drf_spectacular',
     'accounts',
     'sites',
     'analytics',
@@ -31,12 +33,17 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'common.middleware.MetricsMiddleware',
+    'common.cors.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -46,6 +53,14 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Metrika API',
+    'DESCRIPTION': 'API documentation for Metrika analytics platform',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 ROOT_URLCONF = 'config.urls'
@@ -78,6 +93,17 @@ DATABASES = {
         'PORT': config('DB_PORT'),
     }
 }
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -117,6 +143,26 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+CSRF_COOKIE_HTTPONLY = False
+CSRF_TRUSTED_ORIGINS = [FRONTEND_BASE_URL]
+
+REFRESH_TOKEN_COOKIE_NAME = 'refresh_token'
+REFRESH_TOKEN_COOKIE_HTTPONLY = True
+REFRESH_TOKEN_COOKIE_SAMESITE = 'Strict' if not DEBUG else 'Lax'
+REFRESH_TOKEN_MAX_AGE = int(timedelta(days=1).total_seconds())
+
+
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Strict' if not DEBUG else 'Lax'
+SESSION_COOKIE_MAX_AGE = int(timedelta(hours=1).total_seconds())
+
+CORS_ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+CORS_ALLOWED_HEADERS = 'Authorization, Content-Type, X-CSRFToken, X-Correlation-ID'
+CORS_MAX_AGE = 86400
+CORS_EXPOSE_HEADERS = 'X-Correlation-ID'
+
+EMAIL_CHANGE_TIMEOUT = int(timedelta(hours=24).total_seconds())
 
 LOGGING = {
     'version': 1,
