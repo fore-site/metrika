@@ -9,3 +9,4 @@ python-decouple==3.8
 django-redis==6.0.0
 drf-spectacular==0.29.0
 argon2-cffi==25.1.0
+django-ipware==7.0.1

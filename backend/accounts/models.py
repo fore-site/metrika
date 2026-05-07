@@ -58,3 +58,24 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+    
+class LoginAttempt(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='login_attempts',
+        null=True,
+        blank=True,
+        help_text="null only if email doesn't match any user"
+    )
+    email = models.EmailField()
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField(blank=True, default='')
+    was_successful = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', '-timestamp']),
+            models.Index(fields=['ip_address', '-timestamp']),
+        ]

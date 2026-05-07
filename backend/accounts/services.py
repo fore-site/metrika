@@ -6,8 +6,15 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 from django.core.cache import cache
 from django.conf import settings
+from ipware import get_client_ip as _get_client_ip
+import logging
+from datetime import timedelta
+from django.utils import timezone
+from .models import LoginAttempt
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
 
 class EmailChangeTokenGenerator(PasswordResetTokenGenerator):
     key_salt = "email-change"
@@ -64,21 +71,21 @@ class AccountService:
     ) -> bool:
         """
         Validate the reset token and set the new password.
-        Returns True on success, False otherwise.
+        Returns user on success, None otherwise.
         """
         # Decode the user_idb64
         try:
             user_id = force_str(urlsafe_base64_decode(user_idb64))
             user = User.objects.get(pk=user_id)
         except (User.DoesNotExist, ValueError):
-            return False
+            return None
 
         token_generator = PasswordResetTokenGenerator()
         if token_generator.check_token(user, token):
             user.set_password(new_password)
             user.save()
-            return True
-        return False
+            return user
+        return None
 
     def initiate_email_verification(self, email: str) -> tuple[str, str] | None:
         """
@@ -184,3 +191,57 @@ class AccountService:
             return False
         user.delete()
         return True
+    
+    
+    def record_login_attempt(self, email: str, ip_address: str, user_agent: str,
+                             was_successful: bool, user=None):
+        """Persist every login attempt for later analysis."""
+        LoginAttempt.objects.create(
+            user=user,
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            was_successful=was_successful,
+        )
+
+    def detect_suspicious_login(self, user, ip_address: str) -> bool:
+        """
+        Return True if this login looks suspicious.
+        Criteria:
+        - New IP (not used in last 30 days)
+        """
+        recent_window = timezone.now() - timedelta(days=30)
+        previous = LoginAttempt.objects.filter(
+            user=user,
+            was_successful=True,
+            timestamp__gte=recent_window,
+        )
+
+        # If no previous successful logins, this is first login
+        if not previous.exists():
+            return False
+
+        # Check IP
+        used_ips = set(previous.values_list('ip_address', flat=True))
+        if ip_address not in used_ips:
+            logger.info(f'Suspicious login for user {user.id}: new IP {ip_address}')
+            return True
+
+        return False
+
+    def get_latest_suspicious_attempt(self, user):
+        """For notification details – get the most recent login attempt for this user."""
+        return LoginAttempt.objects.filter(
+            user=user, was_successful=True
+        ).order_by('-timestamp').first()
+
+    def get_client_ip(self, request):
+        """Extract real client IP, even behind proxies."""
+        ip, routable = _get_client_ip(request)
+        if ip is None:
+            ip = request.META.get('REMOTE_ADDR', '')
+        return ip
+
+    def get_user_agent(self, request):
+        """Extract user agent string."""
+        return request.META.get('HTTP_USER_AGENT', '')

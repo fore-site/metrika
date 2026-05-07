@@ -5,6 +5,8 @@ from common.metrics import email_sent_total
 from urllib.parse import urljoin, urlencode
 from .exceptions import EmailPermanentError, EmailTransientError
 from .retry import retry_on_transient
+from accounts.models import LoginAttempt
+from django.utils import timezone
 import logging
 import smtplib
 import socket
@@ -80,6 +82,27 @@ class EmailService:
         html_body = render_to_string('email/email_change_notify.html', context)
         text_body = f'Hi {name},\n\nYour email was changed from {old_email} to {new_email}.'
         self._send_mail('Your email address has been changed', text_body, html_body, old_email)
+
+    @retry_on_transient(max_retries=3, base_delay=1, backoff_factor=2)
+    def send_suspicious_login_notification(self, user, ip_address: str, user_agent: str):
+        attempt = LoginAttempt.objects.filter(
+            user=user, was_successful=True
+        ).order_by('-timestamp').first()
+        timestamp = attempt.timestamp if attempt else timezone.now()
+        context = {
+            'name': user.name,
+            'timestamp': timestamp,
+            'ip_address': ip_address,
+            'user_agent': user_agent,
+        }
+        html_body = render_to_string('email/suspicious_login.html', context)
+        text_body = f'New sign-in to your Metrika account from {ip_address} at {timestamp}.'
+        self._send_mail(
+            subject='New sign-in to your Metrika account',
+            text_body=text_body,
+            html_body=html_body,
+            to_email=user.email,
+        )
 
     # Private helpers
     @staticmethod

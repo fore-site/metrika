@@ -11,7 +11,7 @@ from rest_framework_simplejwt.views import (
     )
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from common.response import api_response
 from email_service.services import EmailService
 from email_service.exceptions import EmailTransientError, EmailPermanentError
@@ -123,7 +123,25 @@ class VerifyEmailView(APIView):
 class LoginView(BaseLoginView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
+        email = request.data.get('email', '')
+        user_agent = AccountService().get_user_agent(request)
+        ip_address = AccountService().get_client_ip(request)
+
         if response.status_code == 200:
+            user = AccountService().get_user_by_email(email)
+            # Record login attempt
+            AccountService().record_login_attempt(
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                was_successful=True,
+                user=user
+            )
+
+            # Check if login was suspicious
+            if AccountService().detect_suspicious_login(user, ip_address):
+                EmailService().send_suspicious_login_notification(user, ip_address, user_agent)
+
             refresh_token = response.data['refresh']
             data = {'access': response.data['access']}
             
@@ -146,6 +164,15 @@ class LoginView(BaseLoginView):
 
             get_token(request)  # Ensure CSRF token is set in the response cookies
             return res
+        else:
+            user = AccountService().get_user_by_email(email)
+            AccountService().record_login_attempt(
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                was_successful=False,
+                user=user
+            )
         return response
 
 @extend_schema(
@@ -275,11 +302,17 @@ class PasswordResetConfirmView(APIView):
         token = serializer.validated_data['token']
         new_password = serializer.validated_data['new_password']
 
-        success = AccountService().confirm_password_reset(user_idb64, token, new_password)
-        if success:
+        user = AccountService().confirm_password_reset(user_idb64, token, new_password)
+        if user:
+
+            # Invalidate all existing tokens for the user after password reset
+            for outstanding in OutstandingToken.objects.filter(user=user):
+                if not BlacklistedToken.objects.filter(token=outstanding).exists():
+                    BlacklistedToken.objects.create(token=outstanding)
+
             return api_response(
                 status.HTTP_200_OK,
-                message='Password has been reset successfully.',
+                message='Password has been reset successfully. Kindly login again',
             )
         return api_response(
             status.HTTP_400_BAD_REQUEST,
@@ -344,7 +377,9 @@ class PasswordChangeView(APIView):
                 message='Current password is incorrect.',
             )
         # Invalidate all existing tokens for the user after password change
-        OutstandingToken.objects.filter(user=user).delete()
+        for outstanding in OutstandingToken.objects.filter(user=user):
+            if not BlacklistedToken.objects.filter(token=outstanding).exists():
+                BlacklistedToken.objects.create(token=outstanding)
 
         res = api_response(
             status.HTTP_200_OK, 
@@ -482,6 +517,12 @@ class ConfirmEmailChangeView(APIView):
         success = AccountService().confirm_email_change(user_idb64, token)
         if success:
             user, old_email = success
+
+            # Invalidate all existing tokens for the user after email change
+            for outstanding in OutstandingToken.objects.filter(user=user):
+                if not BlacklistedToken.objects.filter(token=outstanding).exists():
+                    BlacklistedToken.objects.create(token=outstanding)
+            
             try:
                 EmailService().send_email_change_notification(old_email, user.email, user.name)
             except EmailTransientError as e:
