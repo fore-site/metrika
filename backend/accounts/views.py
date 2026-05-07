@@ -126,9 +126,9 @@ class LoginView(BaseLoginView):
         email = request.data.get('email', '')
         user_agent = AccountService().get_user_agent(request)
         ip_address = AccountService().get_client_ip(request)
+        user = AccountService().get_user_by_email(email)
 
         if response.status_code == 200:
-            user = AccountService().get_user_by_email(email)
             # Record login attempt
             AccountService().record_login_attempt(
                 email=email,
@@ -165,7 +165,6 @@ class LoginView(BaseLoginView):
             get_token(request)  # Ensure CSRF token is set in the response cookies
             return res
         else:
-            user = AccountService().get_user_by_email(email)
             AccountService().record_login_attempt(
                 email=email,
                 ip_address=ip_address,

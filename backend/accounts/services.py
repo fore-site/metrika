@@ -28,6 +28,10 @@ email_verification_token_generator = EmailVerificationTokenGenerator()
 class AccountService:
     """Public service for all user operations."""
 
+    MAX_FAILED_ATTEMPTS = 5
+    LOCKOUT_MINUTES = 15
+
+
     def create_user(self, email: str, name: str, password: str) -> User:
         """
         Register a new user.
@@ -237,7 +241,7 @@ class AccountService:
 
     def get_client_ip(self, request):
         """Extract real client IP, even behind proxies."""
-        ip, routable = _get_client_ip(request)
+        ip, _ = _get_client_ip(request)
         if ip is None:
             ip = request.META.get('REMOTE_ADDR', '')
         return ip
