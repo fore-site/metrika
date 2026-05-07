@@ -89,7 +89,7 @@ class RegisterView(generics.CreateAPIView):
 
 @extend_schema(
     summary='Verify email after registration',
-    description="Sets a registered user's inactive status to active.",
+    description="Validate (user_id, token) and sets a registered user's inactive status to active.",
     request=VerifyEmailSerializer,
     responses=envelope_success,
 )
@@ -260,8 +260,8 @@ class PasswordResetView(APIView):
 
 @extend_schema(
     summary='Confirm password reset',
-    description="Confirms new password has been set.",
-    request=PasswordResetSerializer,
+    description="Validates (user_id, token, new_password) and sets user's new password in database.",
+    request=PasswordResetConfirmSerializer,
     responses=envelope_success,
 )
 class PasswordResetConfirmView(APIView):
@@ -346,7 +346,9 @@ class PasswordChangeView(APIView):
         # Invalidate all existing tokens for the user after password change
         OutstandingToken.objects.filter(user=user).delete()
 
-        res = api_response(status.HTTP_200_OK, message='Password changed successfully. Kindly login again.')
+        res = api_response(
+            status.HTTP_200_OK, 
+            message='Password changed successfully. Kindly login again.')
         res.delete_cookie(settings.REFRESH_TOKEN_COOKIE_NAME, path='/api/auth/token/refresh/')
         return res
 
@@ -463,7 +465,7 @@ class InitiateEmailChangeView(APIView):
 
 @extend_schema(
     summary='Confirm email change',
-    description="Confirm new email of user.",
+    description="Validate (user_id, token) and update new email of user in database.",
     request=ConfirmEmailChangeSerializer,
     responses=envelope_success,
 )
