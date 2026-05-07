@@ -29,7 +29,7 @@ def custom_exception_handler(exc, context):
                     else:
                         errors.append({
                             'code': 'invalid',
-                            'detail': str(field_errors),
+                            'detail': field_errors,
                             'source': {'pointer': f'/{field}'},
                         })
                 message = 'Validation error.'

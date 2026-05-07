@@ -97,7 +97,7 @@ DATABASES = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
+        "LOCATION": config("REDIS_URI"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -130,7 +130,7 @@ STATIC_URL = 'static/'
 
 AUTH_USER_MODEL = 'accounts.User'
 
-FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='http://localhost:3000')
+FRONTEND_BASE_URL = config('FRONTEND_BASE_URL')
 
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

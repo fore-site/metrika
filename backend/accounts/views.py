@@ -23,7 +23,7 @@ from .serializers import (
     RegisterSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
-    TokenObtainPairResponseSerializer,
+    TokenObtainPairSerializer,
     VerifyEmailSerializer,
     UserSerializer,
     DeleteAccountSerializer,
@@ -35,22 +35,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-from drf_spectacular.utils import extend_schema
-from common.openapi import envelope_success, envelope_error
+from drf_spectacular.utils import OpenApiExample, extend_schema
+from common.openapi import envelope_success
 
 @extend_schema(
     summary='Register a new user',
     description='Creates an inactive user and sends a verification email.',
     request=RegisterSerializer,
-    responses={
-        201: envelope_success(
-            description='Registration successful – check email for verification link.'
-        ),
-        400: envelope_error(),
-    },
+    responses=envelope_success,
 )
 class RegisterView(generics.CreateAPIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = []
     serializer_class = RegisterSerializer
 
     def create(self, request, *args, **kwargs):
@@ -96,14 +91,10 @@ class RegisterView(generics.CreateAPIView):
     summary='Verify email after registration',
     description="Sets a registered user's inactive status to active.",
     request=VerifyEmailSerializer,
-    responses={
-        200: envelope_success(
-            description='Email successfully verified.'
-        ),
-    },
+    responses=envelope_success,
 )
 class VerifyEmailView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = []
 
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
@@ -126,12 +117,8 @@ class VerifyEmailView(APIView):
 @extend_schema(
     summary='Obtain JWT tokens',
     description="Returns an access token in the body and sets an httpOnly refresh token cookie.",
-    responses={
-        200: envelope_success(
-            data_serializer=TokenObtainPairResponseSerializer(),
-            description='Login successful.'
-        ),
-    },
+    request=TokenObtainPairSerializer,
+    responses=envelope_success,
 )
 class LoginView(BaseLoginView):
     def post(self, request, *args, **kwargs):
@@ -163,13 +150,9 @@ class LoginView(BaseLoginView):
 
 @extend_schema(
     summary='Obtain new access token',
-    description="Returns an access token in the body.",
-    responses={
-        200: envelope_success(
-            data_serializer=TokenObtainPairResponseSerializer(),
-            description='Token successfully refreshed.'
-        ),
-    },
+    description="Uses the refresh token from httpOnly cookie to obtain and return an access token in the body.",
+    request=None,  # No request body needed since refresh token is in cookie
+    responses=envelope_success,
 )
 @method_decorator(csrf_protect, name='dispatch')
 class TokenRefreshView(BaseRefreshView):
@@ -220,11 +203,7 @@ class TokenRefreshView(BaseRefreshView):
 @extend_schema(
     summary='Verify JWT token validity',
     description="Verifies if a JWT token is valid.",
-    responses={
-        200: envelope_success(
-            description='Token is valid.'
-        ),
-    },
+    responses=envelope_success,
 )
 class TokenVerifyView(BaseVerifyView):
     def post(self, request, *args, **kwargs):
@@ -241,14 +220,10 @@ class TokenVerifyView(BaseVerifyView):
     summary='Reset password',
     description="Sends a password reset link to user's mail.",
     request=PasswordResetSerializer,
-    responses={
-        200: envelope_success(
-            description='A password reset link has been sent.'
-        ),
-    },
+    responses=envelope_success,
 )
 class PasswordResetView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = []
 
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
@@ -274,23 +249,23 @@ class PasswordResetView(APIView):
                     status.HTTP_400_BAD_REQUEST,
                     message="Invalid email address. Please provide a valid email."
                 )
+            return api_response(
+                status.HTTP_200_OK,
+                message='A password reset link has been sent.',
+            )
         return api_response(
-            status.HTTP_200_OK,
-            message='A password reset link has been sent.',
+            status.HTTP_400_BAD_REQUEST,
+            message="Invalid email address. Please provide a valid email"
         )
 
 @extend_schema(
     summary='Confirm password reset',
     description="Confirms new password has been set.",
     request=PasswordResetSerializer,
-    responses={
-        200: envelope_success(
-            description='Password has been reset successfully.'
-        ),
-    },
+    responses=envelope_success,
 )
 class PasswordResetConfirmView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = []
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
@@ -312,15 +287,17 @@ class PasswordResetConfirmView(APIView):
         )
 
 @extend_schema(
-    summary='View and update user profile',
-    description="Returns user's current or updated detail.",
+    methods=['GET'],
+    summary='View user profile',
+    description="Returns user's current detail.",
+    responses=envelope_success,
+)
+@extend_schema(
+    methods=['PATCH'],
+    summary='Update user profile',
+    description="Updates user's current detail.",
     request=NameChangeSerializer,
-    responses={
-        200: envelope_success(
-            data_serializer=UserSerializer(),
-            description='A password reset link has been sent.'
-        ),
-    },
+    responses=envelope_success,
 )
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -346,11 +323,7 @@ class MeView(APIView):
     summary='Change user password',
     description="Sets new password for an authenticated user and deletes httponly refresh token cookie.",
     request=PasswordChangeSerializer,
-    responses={
-        200: envelope_success(
-            description='Password changed successfully.'
-        ),
-    },
+    responses=envelope_success,
 )
 class PasswordChangeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -381,14 +354,10 @@ class PasswordChangeView(APIView):
     summary='Resend email verification link',
     description="Resends a newly generated email verification link to the user's email.",
     request=ResendVerificationSerializer,
-    responses={
-        200: envelope_success(
-            description='A new verification link has been sent.'
-        ),
-    },
+    responses=envelope_success,
 )
 class ResendVerificationView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = []
 
     def post(self, request):
         serializer = ResendVerificationSerializer(data=request.data)
@@ -414,20 +383,20 @@ class ResendVerificationView(APIView):
                     status.HTTP_400_BAD_REQUEST,
                     message="Invalid email address. Please provide a valid email."
                 )
-
+            return api_response(
+                status.HTTP_200_OK,
+                message='A new verification link has been sent.',
+            )
         return api_response(
-            status.HTTP_200_OK,
-            message='A new verification link has been sent.',
+            status.HTTP_400_BAD_REQUEST,
+            message="User with email does not exist or already verified."
         )
 
 @extend_schema(
     summary='Logout user',
     description="Retrieves and blacklists refresh token from httponly cookie.",
-    responses={
-        200: envelope_success(
-            description='Logged out successfully.'
-        ),
-    },
+    request=None,
+    responses=envelope_success,
 )
 @method_decorator(csrf_protect, name='dispatch')
 class LogoutView(APIView):
@@ -458,11 +427,7 @@ class LogoutView(APIView):
     summary='Change email',
     description="Initiates email change and sends verification link to the new email address.",
     request=InitiateEmailChangeSerializer,
-    responses={
-        200: envelope_success(
-            description='A verification link has been sent to the new email address.'
-        ),
-    },
+    responses=envelope_success,
 )
 class InitiateEmailChangeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -473,29 +438,37 @@ class InitiateEmailChangeView(APIView):
         new_email = serializer.validated_data['new_email']
         password = serializer.validated_data['password']
 
-        service = AccountService()
         try:
-            user_idb64, token = service.initiate_email_change(request.user, new_email, password)
+            user_idb64, token = AccountService().initiate_email_change(request.user, new_email, password)
         except ValueError as e:
             return api_response(status.HTTP_400_BAD_REQUEST, message=str(e))
 
         # Send verification email to new email
-        EmailService().send_email_change_verification(new_email, user_idb64, token, request.user.name)
-        return api_response(status.HTTP_200_OK, message='A verification email has been sent to the new address.')
+        try:
+            EmailService().send_email_change_verification(new_email, user_idb64, token, request.user.name)
+        except EmailTransientError as e:
+                logger.error(f"Transient error sending email change verification link to {new_email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="Failed to send email change verification link. Kindly restart the process."
+                )
+        except EmailPermanentError as e:
+                logger.error(f"Permanent error sending email change verification link to {new_email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    message="Invalid email address. Please provide a valid email."
+                )        
+        return api_response(status.HTTP_200_OK, message='A verification link has been sent to the new email address.')
 
 
 @extend_schema(
     summary='Confirm email change',
     description="Confirm new email of user.",
     request=ConfirmEmailChangeSerializer,
-    responses={
-        200: envelope_success(
-            description='Email address updated successfully.'
-        ),
-    },
+    responses=envelope_success,
 )
 class ConfirmEmailChangeView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = []
 
     def post(self, request):
         serializer = ConfirmEmailChangeSerializer(data=request.data)
@@ -507,7 +480,20 @@ class ConfirmEmailChangeView(APIView):
         success = AccountService().confirm_email_change(user_idb64, token)
         if success:
             user, old_email = success
-            EmailService().send_email_change_notification(old_email, user.email, user.name)
+            try:
+                EmailService().send_email_change_notification(old_email, user.email, user.name)
+            except EmailTransientError as e:
+                logger.error(f"Transient error sending email change notification to {old_email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="Failed to send email change notification."
+                )
+            except EmailPermanentError as e:
+                logger.error(f"Permanent error sending email change notification to {old_email}: {e}", exc_info=True)
+                return api_response(
+                    status.HTTP_400_BAD_REQUEST,
+                    message="Invalid email address."
+                )
             return api_response(
                 status.HTTP_200_OK,
                 message='Email address updated successfully.',
@@ -521,11 +507,7 @@ class ConfirmEmailChangeView(APIView):
     summary='Delete account',
     description="Destructive action to permanently delete account from database.",
     request=DeleteAccountSerializer,
-    responses={
-        200: envelope_success(
-            description='Account deleted successfully.'
-        ),
-    },
+    responses=envelope_success,
 )
 class DeleteAccountView(APIView):
     permission_classes = [permissions.IsAuthenticated]

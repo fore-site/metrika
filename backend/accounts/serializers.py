@@ -21,9 +21,17 @@ class RegisterSerializer(serializers.Serializer):
         validate_password(value)
         return value
 
-class TokenObtainPairResponseSerializer(serializers.Serializer):
-    access = serializers.CharField()
+class TokenObtainPairResponseSerializer(serializers.Serializer): # For documentation purposes only
+    access = serializers.CharField(read_only=True)
 
+
+class TokenObtainPairSerializer(serializers.Serializer): # For documentation purposes only
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True) 
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()

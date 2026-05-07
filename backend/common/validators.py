@@ -31,10 +31,4 @@ def validate_name_field(value):
         # Character validation: allow letters (any language), digits, spaces, hyphens, apostrophes, periods, commas
     if not re.match(r'^[\w\s\-.,\']+$', cleaned, re.UNICODE):
         raise serializers.ValidationError("Name contains invalid characters.")
-        # Disallow leading/trailing punctuation
-    if re.match(r'^[-.,\']', cleaned) or re.search(r'[-.,\']$', cleaned):
-        raise serializers.ValidationError("Name cannot start or end with punctuation.")
-        # Disallow leading or trailing digits
-    if not cleaned[0].isalpha() or not cleaned[-1].isalpha():
-        raise serializers.ValidationError("Name must start and end with a letter.")
     return cleaned

@@ -102,6 +102,8 @@ class AccountService:
             user = User.objects.get(pk=user_id)
         except (User.DoesNotExist, ValueError):
             return False
+        if user.is_active == True:
+            return True
         if email_verification_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
@@ -147,11 +149,11 @@ class AccountService:
         user_idb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
         cache_key = f"email_change:{user.pk}"
-        cache.set(cache_key, (user_idb64, token), timeout=settings.EMAIL_CHANGE_TIMEOUT)
+        cache.set(cache_key, new_email, timeout=settings.EMAIL_CHANGE_TIMEOUT)
         return user_idb64, token
 
 
-    def confirm_email_change(self, user_idb64: str, token: str, new_email: str):
+    def confirm_email_change(self, user_idb64: str, token: str):
         """Returns (user, old email) on success or None"""
         try:
             user_id = force_str(urlsafe_base64_decode(user_idb64))
