@@ -181,12 +181,22 @@ LOGGING = {
         'json': {
             '()': 'common.logging.JSONFormatter',
         },
+        'rq_console': {
+            'format': '%(asctime)s %(message)s',
+            'datefmt': '%H:%M:%S',
+        },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'json',
         },
+        'rq_console': {
+            'level': 'DEBUG',
+            'class': 'rq.logutils.ColorizingStreamHandler',
+            'formatter': 'rq_console',
+            'exclude': ['%(asctime)s'],
+        }
     },
     'root': {
         'level': 'INFO',
@@ -228,5 +238,26 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': False,
         },
+        'rq.worker': {
+            'handlers': ['rq_console'],
+            'level': 'DEBUG',
+        }
     },
 }
+
+RQ_QUEUES = {
+    'default': {
+        'USE_REDIS_CACHE': 'default',
+        'DEFAULT_TIMEOUT': 360,
+        'DEFAULT_RESULT_TTL': 800,
+        'REDIS_CLIENT_KWARGS': {    # Eventual additional Redis connection arguments
+            'ssl_cert_reqs': None,
+        },
+    },
+    'high': {
+        'URL': config('REDISTOGO_URL', 'redis://localhost:6379/1'),  # If you're on Heroku
+        'DEFAULT_TIMEOUT': 500,
+    },
+}
+
+RQ_EXCEPTION_HANDLERS = ['email_service.rq_handlers.email_exception_handler']

@@ -31,13 +31,11 @@ from .serializers import (
     PasswordChangeSerializer,
     ResendVerificationSerializer,
 )
+from drf_spectacular.utils import extend_schema
+from common.openapi import envelope_success
 import logging 
 
 logger = logging.getLogger(__name__)
-
-
-from drf_spectacular.utils import OpenApiExample, extend_schema
-from common.openapi import envelope_success
 
 @extend_schema(
     summary='Register a new user',
@@ -58,7 +56,7 @@ class RegisterView(generics.CreateAPIView):
         name = serializer.validated_data['name']
 
         try:
-            user = AccountService().create_user(email, name, password)
+            AccountService().create_user(email, name, password)
         except ValueError as e:
             return api_response(
                 status.HTTP_400_BAD_REQUEST,
@@ -69,24 +67,12 @@ class RegisterView(generics.CreateAPIView):
         result = AccountService().initiate_email_verification(email)
         if result:
             user_idb64, token = result
-            try:
-                EmailService().send_verification_email(email, user_idb64, token, name=name)
-            except EmailTransientError as e:
-                logger.error(f"Transient error sending verification email to {email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="Failed to send verification email. Please request a new one."
-                )
-            except EmailPermanentError as e:
-                logger.error(f"Permanent error sending verification email to {email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    message="Invalid email address. Please provide a valid email."
-                )
-        return api_response(
-            status.HTTP_201_CREATED,
-            message='Registration successful. Kindly check your email to verify your account.',
-        )
+            EmailService().send_verification_email(email, user_idb64, token, name=name)
+            
+            return api_response(
+                status.HTTP_201_CREATED,
+                message='Registration successful. Kindly check your email to verify your account.',
+            )
 
 @extend_schema(
     summary='Verify email after registration',
