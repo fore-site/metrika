@@ -22,11 +22,14 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault('is_suspended', False)
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True.')
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
+        if extra_fields.get('is_suspended') is True:
+            raise ValueError('Superuser must have is_suspended=False')
 
         return self.create_user(email, password, **extra_fields)
 
@@ -45,9 +48,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         _('active'),
         default=False,
         help_text=_(
-            'Designates whether this user should be treated as active. '
+            'Designates whether this user is verified. '
             'Default is false pending email verification.'
         ),
+    )
+    is_suspended = models.BooleanField(
+        _('suspended'),
+        default=False,
+        help_text=(
+            'Designates whether this user is suspended and all authenticated privileges revoked'
+        )
     )
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
 

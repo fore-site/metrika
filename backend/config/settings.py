@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
+    'django_rq'
     'accounts',
     'sites',
     'analytics',
@@ -82,6 +83,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+AUTHENTICATION_BACKENDS = ['accounts.backends.CustomModelBackend']
 
 DATABASES = {
     'default': {

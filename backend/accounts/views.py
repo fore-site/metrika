@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView as BaseRefreshView,
     TokenVerifyView as BaseVerifyView,
     )
-from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.exceptions import AuthenticationFailed, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from common.response import api_response
@@ -20,6 +20,7 @@ from .serializers import (
     NameChangeSerializer,
     InitiateEmailChangeSerializer,
     ConfirmEmailChangeSerializer,
+    CustomTokenObtainPairSerializer,
     RegisterSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
@@ -121,14 +122,30 @@ class VerifyEmailView(APIView):
     responses=envelope_success,
 )
 class LoginView(BaseLoginView):
+    serializer_class = CustomTokenObtainPairSerializer
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        email = request.data.get('email', '')
-        user_agent = AccountService().get_user_agent(request)
-        ip_address = AccountService().get_client_ip(request)
-        user = AccountService().get_user_by_email(email)
+        try:
+            response = super().post(request, *args, **kwargs)
+        except AuthenticationFailed:
+            email = request.data.get('email', '')
+            user_agent = AccountService().get_user_agent(request)
+            ip_address = AccountService().get_client_ip(request)
+            user = AccountService().get_user_by_email(email)
+            if user:
+                AccountService().record_login_attempt(
+                    email=email,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    was_successful=False,
+                    user=user
+                )
+            raise
 
         if response.status_code == 200:
+            email = request.data.get('email', '')
+            user_agent = AccountService().get_user_agent(request)
+            ip_address = AccountService().get_client_ip(request)
+            user = AccountService().get_user_by_email(email)
             # Record login attempt
             AccountService().record_login_attempt(
                 email=email,
@@ -162,16 +179,8 @@ class LoginView(BaseLoginView):
                 path='/api/auth/token/refresh/',  # Only send cookie to refresh endpoint
             )
 
-            get_token(request)  # Ensure CSRF token is set in the response cookies
+            get_token(request._request)  # Ensure CSRF token is set in the response cookies
             return res
-        else:
-            AccountService().record_login_attempt(
-                email=email,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                was_successful=False,
-                user=user
-            )
         return response
 
 @extend_schema(
