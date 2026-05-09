@@ -1,5 +1,8 @@
 from rest_framework.views import exception_handler
 from .response import api_response
+import logging
+
+logger = logging.getLogger(__name__)
 
 def custom_exception_handler(exc, context):
     # Get a standard error response
@@ -48,4 +51,5 @@ def custom_exception_handler(exc, context):
         )
 
     # For unhandled exceptions, return a generic 500 envelope
+    logger.error(f"Unhandled error: {exc}")
     return api_response(500, message='An unexpected error occurred.')

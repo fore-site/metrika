@@ -14,7 +14,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from common.response import api_response
 from email_service.services import EmailService
-from email_service.exceptions import EmailTransientError, EmailPermanentError
 from .services import AccountService
 from .serializers import (
     NameChangeSerializer,
@@ -147,7 +146,7 @@ class LoginView(BaseLoginView):
 
             refresh_token = response.data['refresh']
             data = {'access': response.data['access']}
-            
+            print(refresh_token)
             samesite = settings.REFRESH_TOKEN_COOKIE_SAMESITE
             max_age = settings.REFRESH_TOKEN_MAX_AGE
 
@@ -162,7 +161,7 @@ class LoginView(BaseLoginView):
                 httponly=settings.REFRESH_TOKEN_COOKIE_HTTPONLY,
                 max_age=max_age,
                 samesite=samesite,
-                path='/api/auth/token/refresh/',  # Only send cookie to refresh endpoint
+                path='/api/auth/',  # Only send cookie to the api/auth endpoint
             )
 
             get_token(request._request)  # Ensure CSRF token is set in the response cookies
@@ -178,47 +177,47 @@ class LoginView(BaseLoginView):
 @method_decorator(csrf_protect, name='dispatch')
 class TokenRefreshView(BaseRefreshView):
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            refresh_token = request.COOKIES.get(settings.REFRESH_TOKEN_COOKIE_NAME)
-            if not refresh_token:
-                refresh_token = request.data.get('refresh')
-                if not refresh_token:
-                    return api_response(
-                        status.HTTP_400_BAD_REQUEST,
-                        message='Refresh token is required.',
-                    )
-                
-            try:
-                token = RefreshToken(refresh_token)
-            except TokenError:
+        refresh_token = request.COOKIES.get(settings.REFRESH_TOKEN_COOKIE_NAME)
+        if not refresh_token:
                 return api_response(
                     status.HTTP_400_BAD_REQUEST,
-                    message='Invalid or expired refresh token.',
+                    message='Refresh token is required.',
                 )
-            
-            try:
-                token.blacklist()  # Blacklist the old refresh token
-            except Exception as e:
-                logger.error(f"Error blacklisting refresh token: {e}", exc_info=True)
 
-            token.set_jti()  # Generate a new jti for the new token
-            token.set_exp()
-            new_refresh = str(token)
-            res = api_response(
-                status.HTTP_200_OK,
-                data=response.data,
-                message='Token refreshed successfully.',
+        try:
+            old_refresh = RefreshToken(refresh_token)
+            old_refresh.check_blacklist()
+
+        except TokenError:
+            return api_response(
+                status.HTTP_400_BAD_REQUEST,
+                message='Invalid or expired refresh token.',
             )
-            res.set_cookie(
-                key=settings.REFRESH_TOKEN_COOKIE_NAME,
-                value=new_refresh,
-                httponly=settings.REFRESH_TOKEN_COOKIE_HTTPONLY,
-                max_age=settings.REFRESH_TOKEN_MAX_AGE,
-                samesite=settings.REFRESH_TOKEN_COOKIE_SAMESITE,
-                path='/api/auth/token/refresh/',
+        old_refresh.blacklist()
+        user_id = old_refresh.get('user_id')
+        user = AccountService().get_user_by_id(user_id)
+        if not user.is_active or user.is_suspended:
+            logger.warning(f"Inactive or suspended user attempted token refresh: {user.email}")
+            return api_response(
+                status.HTTP_400_BAD_REQUEST,
+                message='No active account found for the provided credentials.',
             )
-        return response
+        new_refresh = RefreshToken.for_user(user)
+
+        res = api_response(
+            status.HTTP_200_OK,
+            data={'access': str(new_refresh.access_token)},
+            message='Token refreshed successfully.',
+        )
+        res.set_cookie(
+            key=settings.REFRESH_TOKEN_COOKIE_NAME,
+            value=str(new_refresh),
+            httponly=settings.REFRESH_TOKEN_COOKIE_HTTPONLY,
+            max_age=settings.REFRESH_TOKEN_MAX_AGE,
+            samesite=settings.REFRESH_TOKEN_COOKIE_SAMESITE,
+            path='/api/auth/',
+        )
+        return res
 
 
 @extend_schema(
@@ -256,20 +255,8 @@ class PasswordResetView(APIView):
             user = AccountService().get_user_by_email(email)
             name = user.name if user else ''
             user_idb64, token = result
-            try:
-                EmailService().send_password_reset_email(email, user_idb64, token, name=name)
-            except EmailTransientError as e:
-                logger.error(f"Transient error sending password reset email to {email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="Failed to send password reset email. Please request a new one."
-                )
-            except EmailPermanentError as e:
-                logger.error(f"Permanent error sending password reset email to {email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    message="Invalid email address. Please provide a valid email."
-                )
+            EmailService().send_password_reset_email(email, user_idb64, token, name=name)
+            
             return api_response(
                 status.HTTP_200_OK,
                 message='A password reset link has been sent.',
@@ -370,15 +357,26 @@ class PasswordChangeView(APIView):
                 status.HTTP_400_BAD_REQUEST,
                 message='Current password is incorrect.',
             )
+        
         # Invalidate all existing tokens for the user after password change
         for outstanding in OutstandingToken.objects.filter(user=user):
             if not BlacklistedToken.objects.filter(token=outstanding).exists():
                 BlacklistedToken.objects.create(token=outstanding)
 
+        # rotate refresh token
+        new_refresh = RefreshToken.for_user(user)
+
         res = api_response(
             status.HTTP_200_OK, 
-            message='Password changed successfully. Kindly login again.')
-        res.delete_cookie(settings.REFRESH_TOKEN_COOKIE_NAME, path='/api/auth/token/refresh/')
+            message='Password changed successfully.')
+        res.set_cookie(
+            key=settings.REFRESH_TOKEN_COOKIE_NAME,
+            value=str(new_refresh),
+            httponly=settings.REFRESH_TOKEN_COOKIE_HTTPONLY,
+            max_age=settings.REFRESH_TOKEN_MAX_AGE,
+            samesite=settings.REFRESH_TOKEN_COOKIE_SAMESITE,
+            path='/api/auth/',
+        )
         return res
 
 @extend_schema(
@@ -400,20 +398,8 @@ class ResendVerificationView(APIView):
             user = AccountService().get_user_by_email(email)
             name = user.name if user else ''
             user_idb64, token = result
-            try:
-                EmailService().send_verification_email(email, user_idb64, token, name=name)
-            except EmailTransientError as e:
-                logger.error(f"Transient error sending verification email to {email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="Failed to send verification email. Please request a new one."
-                )
-            except EmailPermanentError as e:
-                logger.error(f"Permanent error sending verification email to {email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    message="Invalid email address. Please provide a valid email."
-                )
+            EmailService().send_verification_email(email, user_idb64, token, name=name)
+            
             return api_response(
                 status.HTTP_200_OK,
                 message='A new verification link has been sent.',
@@ -436,12 +422,10 @@ class LogoutView(APIView):
     def post(self, request):
         refresh_token = request.COOKIES.get(settings.REFRESH_TOKEN_COOKIE_NAME)
         if not refresh_token:
-            refresh_token = request.data.get('refresh')
-            if not refresh_token:
-                return api_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    message='Refresh token is required.',
-                )
+            return api_response(
+                status.HTTP_400_BAD_REQUEST,
+                message='Refresh token is required.',
+            )
         try:
             token = RefreshToken(refresh_token)
             token.blacklist()
@@ -451,7 +435,7 @@ class LogoutView(APIView):
                 message='Invalid or expired refresh token.',
             )
         res = api_response(status.HTTP_200_OK, message='Logged out successfully.')
-        res.delete_cookie(settings.REFRESH_TOKEN_COOKIE_NAME, path='/api/auth/token/refresh/')
+        res.delete_cookie(settings.REFRESH_TOKEN_COOKIE_NAME, path='/api/auth/')
         return res
 
 @extend_schema(
@@ -475,20 +459,7 @@ class InitiateEmailChangeView(APIView):
             return api_response(status.HTTP_400_BAD_REQUEST, message=str(e))
 
         # Send verification email to new email
-        try:
-            EmailService().send_email_change_verification(new_email, user_idb64, token, request.user.name)
-        except EmailTransientError as e:
-                logger.error(f"Transient error sending email change verification link to {new_email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="Failed to send email change verification link. Kindly restart the process."
-                )
-        except EmailPermanentError as e:
-                logger.error(f"Permanent error sending email change verification link to {new_email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    message="Invalid email address. Please provide a valid email."
-                )        
+        EmailService().send_email_change_verification(new_email, user_idb64, token, request.user.name)
         return api_response(status.HTTP_200_OK, message='A verification link has been sent to the new email address.')
 
 
@@ -512,29 +483,30 @@ class ConfirmEmailChangeView(APIView):
         if success:
             user, old_email = success
 
-            # Invalidate all existing tokens for the user after email change
+            # Invalidate all existing tokens for the user after password change
             for outstanding in OutstandingToken.objects.filter(user=user):
                 if not BlacklistedToken.objects.filter(token=outstanding).exists():
                     BlacklistedToken.objects.create(token=outstanding)
+                
+            # rotate refresh token
+            new_refresh = RefreshToken.for_user(user)
+
+            EmailService().send_email_change_notification(old_email, user.email, user.name)
             
-            try:
-                EmailService().send_email_change_notification(old_email, user.email, user.name)
-            except EmailTransientError as e:
-                logger.error(f"Transient error sending email change notification to {old_email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="Failed to send email change notification."
-                )
-            except EmailPermanentError as e:
-                logger.error(f"Permanent error sending email change notification to {old_email}: {e}", exc_info=True)
-                return api_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    message="Invalid email address."
-                )
-            return api_response(
-                status.HTTP_200_OK,
-                message='Email address updated successfully.',
+            res = api_response(
+            status.HTTP_200_OK, 
+            message='Password changed successfully.'
             )
+        
+            res.set_cookie(
+                key=settings.REFRESH_TOKEN_COOKIE_NAME,
+                value=str(new_refresh),
+                httponly=settings.REFRESH_TOKEN_COOKIE_HTTPONLY,
+                max_age=settings.REFRESH_TOKEN_MAX_AGE,
+                samesite=settings.REFRESH_TOKEN_COOKIE_SAMESITE,
+                path='/api/auth/',
+            )
+            return res
         return api_response(
             status.HTTP_400_BAD_REQUEST,
             message='Invalid or expired verification link.',
@@ -555,6 +527,16 @@ class DeleteAccountView(APIView):
 
         user = request.user
         success = AccountService().delete_account(user, serializer.validated_data['password'])
+        
+        # Delete all associated jwt tokens
+        outstanding_tokens = OutstandingToken.objects.filter(user=user)
+        if outstanding_tokens:
+            for outstanding in outstanding_tokens:
+                blacklisted = BlacklistedToken.objects.filter(token=outstanding)
+                if blacklisted:
+                    blacklisted.delete()
+            outstanding_tokens.delete()
+
         if not success:
             return api_response(
                 status.HTTP_400_BAD_REQUEST,
