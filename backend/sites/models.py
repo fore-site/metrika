@@ -8,6 +8,7 @@ class Site(models.Model):
         on_delete=models.CASCADE,
         related_name='sites',
     )
+    public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     domain = models.CharField(max_length=255)
     tracking_token = models.CharField(
         max_length=64,

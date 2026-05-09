@@ -3,5 +3,5 @@ from .views import SiteListCreateView, SiteDetailView
 
 urlpatterns = [
     path('', SiteListCreateView.as_view(), name='site-list'),
-    path('<int:id>/', SiteDetailView.as_view(), name='site-detail'),
+    path('<uuid:public_id>/', SiteDetailView.as_view(), name='site-detail'),
 ]

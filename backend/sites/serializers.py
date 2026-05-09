@@ -17,5 +17,5 @@ class UpdateSiteSerializer(serializers.Serializer):
 class SiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Site
-        fields = ['id', 'domain', 'tracking_token', 'is_active', 'created_at']
+        fields = ['public_id', 'domain', 'tracking_token', 'is_active', 'created_at']
         read_only_fields = ['id', 'tracking_token', 'created_at']

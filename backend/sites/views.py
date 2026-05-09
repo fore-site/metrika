@@ -79,20 +79,22 @@ class SiteDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsSiteOwner]
     queryset = Site.objects.all()    # base queryset; object-level filtered by permission
     serializer_class = SiteSerializer
-    lookup_field = 'id'
+    lookup_field = 'public_id'
 
     def get(self, request, *args, **kwargs):
-        instance = self.queryset.filter(id=self.kwargs['id']).first()
+        instance = self.queryset.filter(public_id=self.kwargs['public_id']).first()
         if not instance:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
+        self.check_object_permissions(request, instance)
         return api_response(status.HTTP_200_OK, 
                             data=SiteSerializer(instance).data, 
                             message='Site retrieved successfully.')
 
     def put(self, request, *args, **kwargs):
-        instance = self.queryset.filter(id=self.kwargs['id']).first()
+        instance = self.queryset.filter(public_id=self.kwargs['public_id']).first()
         if not instance:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
+        self.check_object_permissions(request, instance)
         serializer = UpdateSiteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         domain = serializer.validated_data['domain']
@@ -114,9 +116,10 @@ class SiteDetailView(APIView):
                             message='Site updated.')
 
     def delete(self, request, *args, **kwargs):
-        instance = self.queryset.filter(id=self.kwargs['id']).first()
+        instance = self.queryset.filter(public_id=self.kwargs['public_id']).first()
         if not instance:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
+        self.check_object_permissions(request, instance)
         success = SiteService().deactivate_site(instance.id, request.user.id)
         if not success:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
