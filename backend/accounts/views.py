@@ -526,7 +526,6 @@ class DeleteAccountView(APIView):
         serializer.is_valid(raise_exception=True)
 
         user = request.user
-        success = AccountService().delete_account(user, serializer.validated_data['password'])
         
         # Delete all associated jwt tokens
         outstanding_tokens = OutstandingToken.objects.filter(user=user)
@@ -537,9 +536,14 @@ class DeleteAccountView(APIView):
                     blacklisted.delete()
             outstanding_tokens.delete()
 
+        success = AccountService().delete_account(user, serializer.validated_data['password'])
+
         if not success:
             return api_response(
                 status.HTTP_400_BAD_REQUEST,
                 message='Password is incorrect.',
             )
-        return api_response(status.HTTP_200_OK, message='Account deleted successfully.')
+        
+        res = api_response(status.HTTP_200_OK, message='Account deleted successfully.')
+        res.delete_cookie(settings.REFRESH_TOKEN_COOKIE_NAME, path='/api/auth/')
+        return res

@@ -51,5 +51,5 @@ def custom_exception_handler(exc, context):
         )
 
     # For unhandled exceptions, return a generic 500 envelope
-    logger.error(f"Unhandled error: {exc}")
+    logger.error(f"Unhandled error: {exc}, {context}")
     return api_response(500, message='An unexpected error occurred.')
