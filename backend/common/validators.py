@@ -32,3 +32,32 @@ def validate_name_field(value):
     if not re.match(r'^[\w\s\-.,\']+$', cleaned, re.UNICODE):
         raise serializers.ValidationError("Name contains invalid characters.")
     return cleaned
+
+
+# Regex for validating domain names (simplified, allows subdomains)
+HOSTNAME_REGEX = re.compile(
+    r'^(?!\-)[A-Za-z0-9\-]{1,63}(?<!\-)'
+    r'(\-(?!\-))?'
+    r'(\.[A-Za-z]{2,})+$'
+)
+
+def validate_domain(value: str) -> str:
+    """
+    Normalize and validate a domain name.
+    Returns the cleaned domain string.
+    """
+    domain = value.strip().lower().rstrip('/')
+
+    if not domain:
+        raise serializers.ValidationError("Domain cannot be empty.")
+
+    # Reject any protocol or path
+    if '://' in domain or '/' in domain:
+        raise serializers.ValidationError(
+            "Enter only the domain name (e.g. example.com), without http:// or paths."
+        )
+
+    if not HOSTNAME_REGEX.match(domain):
+        raise serializers.ValidationError("Enter a valid domain name (e.g. example.com).")
+
+    return domain
