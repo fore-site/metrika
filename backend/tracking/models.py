@@ -25,7 +25,6 @@ class Event(models.Model):
     user_agent = models.TextField(null=True, blank=True)
 
     ip_address = models.GenericIPAddressField(null=True, blank=True)
-    continent = models.CharField(max_length=50, blank=True, default='')
     country = models.CharField(max_length=100, blank=True, default='')
     region  = models.CharField(max_length=100, blank=True, default='')
     city    = models.CharField(max_length=100, blank=True, default='')

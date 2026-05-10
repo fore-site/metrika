@@ -56,7 +56,6 @@ class EventIngestionTests(TestCase):
         self.assertEqual(event.country, 'United Kingdom')
         self.assertEqual(event.region, 'England')
         self.assertEqual(event.city, 'London')
-        self.assertEqual(event.continent, 'Europe')
 
         # User-agent parsed fields
         # self.assertEqual(event.browser, 'Mozilla')

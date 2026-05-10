@@ -15,7 +15,6 @@ def geolocate(ip_address: str) -> dict:
     try:
         response = g.city(ip_address)
         return {
-            'continent': response.get('continent_name', ''),
             'country': response.get('country_name', ''),
             'region':  response.get('region_name', ''),
             'city':    response.get('city', ''),

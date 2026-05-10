@@ -26,7 +26,6 @@ class IngestionService:
             device_type=self._device_type(ua),
             user_agent=user_agent_str,
             ip_address=ip_address,
-            continent=location.get('continent', ''),
             country=location.get('country', ''),
             region=location.get('region', ''),
             city=location.get('city', ''),
