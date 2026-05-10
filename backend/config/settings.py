@@ -182,6 +182,8 @@ CORS_EXPOSE_HEADERS = 'X-Correlation-ID'
 
 EMAIL_CHANGE_TIMEOUT = int(timedelta(hours=24).total_seconds())
 
+GEOIP_PATH = BASE_DIR / 'geoip' / 'GeoLite2-City.mmdb'
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
