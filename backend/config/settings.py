@@ -176,9 +176,8 @@ SESSION_COOKIE_SAMESITE = 'Strict' if not DEBUG else 'Lax'
 SESSION_COOKIE_MAX_AGE = int(timedelta(hours=1).total_seconds())
 
 CORS_ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-CORS_ALLOWED_HEADERS = 'Authorization, Content-Type, X-CSRFToken, X-Correlation-ID'
+CORS_ALLOWED_HEADERS = 'Authorization, Content-Type, X-CSRFToken, X-Correlation-ID, X-Tracking-Token'
 CORS_MAX_AGE = 86400
-CORS_EXPOSE_HEADERS = 'X-Correlation-ID'
 
 EMAIL_CHANGE_TIMEOUT = int(timedelta(hours=24).total_seconds())
 

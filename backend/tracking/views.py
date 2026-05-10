@@ -4,15 +4,33 @@ from common.response import api_response
 from sites.services import SiteService
 from .services import IngestionService
 from .serializers import EventPayloadSerializer
-from .utils import get_client_ip, get_user_agent
+from common.utils import get_client_ip, get_user_agent
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 
+@extend_schema(
+    summary="Send event payload",
+    parameters=[
+        OpenApiParameter(
+            name='X-Tracking-Token',
+            type=str,
+            location=OpenApiParameter.HEADER,
+            description='The tracking token of your site (Available on the dashboard)',
+            required=True,
+        )
+    ],
+    description="Send event payload for each page view along with X-Tracking-Token header",
+    request=EventPayloadSerializer,
+    responses={status.HTTP_204_NO_CONTENT: OpenApiResponse(
+        description='Event recorded successfully',
+        response=None
+    )},
+)
 class EventView(APIView):
-    permission_classes = []   # public
+    permission_classes = []
     authentication_classes = []
 
     def post(self, request):
-        # 1. Validate token
-        token = request.headers.get('X‑Tracking‑Token')
+        token = request.headers.get('X-Tracking-Token')
         if not token:
             return api_response(status.HTTP_401_UNAUTHORIZED, message='Missing tracking token.')
 
@@ -20,15 +38,14 @@ class EventView(APIView):
         if not site:
             return api_response(status.HTTP_401_UNAUTHORIZED, message='Invalid tracking token.')
 
-        # 2. Validate payload
-        serializer = EventPayloadSerializer(data=request.data)
+        # Validate payload
+        serializer = EventPayloadSerializer(data=request.data, context={'site': site})
         serializer.is_valid(raise_exception=True)
 
-        # 3. Extract request metadata
         ip = get_client_ip(request)
         ua = get_user_agent(request)
 
-        # 4. Record event
+        # Record event
         IngestionService().record_event(
             site_id=site.id,
             payload=serializer.validated_data,
@@ -36,4 +53,4 @@ class EventView(APIView):
             user_agent_str=ua,
         )
 
-        return api_response(status.HTTP_204_NO_CONTENT, message='Event recorded.')
+        return api_response(status.HTTP_204_NO_CONTENT)
