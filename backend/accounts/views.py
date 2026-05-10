@@ -32,6 +32,7 @@ from .serializers import (
 )
 from drf_spectacular.utils import extend_schema
 from common.openapi import envelope_success
+from common.utils import get_client_ip, get_user_agent
 import logging 
 
 logger = logging.getLogger(__name__)
@@ -113,8 +114,8 @@ class LoginView(BaseLoginView):
             response = super().post(request, *args, **kwargs)
         except AuthenticationFailed:
             email = request.data.get('email', '')
-            user_agent = AccountService().get_user_agent(request)
-            ip_address = AccountService().get_client_ip(request)
+            user_agent = get_user_agent(request)
+            ip_address = get_client_ip(request)
             user = AccountService().get_user_by_email(email)
             if user:
                 AccountService().record_login_attempt(
@@ -128,8 +129,8 @@ class LoginView(BaseLoginView):
 
         if response.status_code == 200:
             email = request.data.get('email', '')
-            user_agent = AccountService().get_user_agent(request)
-            ip_address = AccountService().get_client_ip(request)
+            user_agent = get_user_agent(request)
+            ip_address = get_client_ip(request)
             user = AccountService().get_user_by_email(email)
             # Record login attempt
             AccountService().record_login_attempt(

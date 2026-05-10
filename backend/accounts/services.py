@@ -6,7 +6,6 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 from django.core.cache import cache
 from django.conf import settings
-from ipware import get_client_ip as _get_client_ip
 import logging
 from datetime import timedelta
 from django.utils import timezone
@@ -239,13 +238,3 @@ class AccountService:
             user=user, was_successful=True
         ).order_by('-timestamp').first()
 
-    def get_client_ip(self, request):
-        """Extract real client IP, even behind proxies."""
-        ip, _ = _get_client_ip(request)
-        if ip is None:
-            ip = request.META.get('REMOTE_ADDR', '')
-        return ip
-
-    def get_user_agent(self, request):
-        """Extract user agent string."""
-        return request.META.get('HTTP_USER_AGENT', '')
