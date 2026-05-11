@@ -4,15 +4,9 @@
   var script = document.querySelector('script[data-domain][data-token]');
   if (!script) return;
 
-  var domain = script.getAttribute('data-domain');
+  // var domain = script.getAttribute('data-domain');
   var token  = script.getAttribute('data-token');
   var apiUrl = script.getAttribute('data-api') || script.src.replace(/\/js\/tracker\.js$/, '') + '/api/event';
-
-  // Hostname verification 
-  var hostname = location.hostname;
-  if (hostname !== domain && hostname.indexOf('.' + domain) === -1) {
-    return;  // Page not on the registered domain or subdomain
-  }
 
   // Visitor ID (persistent)
   var STORAGE_KEY = '_metrika_vid';

@@ -6,3 +6,5 @@ __pycache__/
 *.log
 .env
 backend/geoip/GeoLite2-City.mmdb
+*.sqlite3
+backend/db.sqlite3

@@ -41,3 +41,7 @@ class SiteService:
     def deactivate_site(self, site_id: int, user_id: int) -> bool:
         """Soft delete."""
         return self.update_site(site_id, user_id, is_active=False) is not None
+    
+    def get_all_active_sites(self):
+        """Fetch all active sites for aggreggation"""
+        return Site.objects.filter(is_active=True)

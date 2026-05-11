@@ -2,6 +2,7 @@ from user_agents import parse as ua_parse
 from .models import Event
 from .geo import geolocate
 from .referrer import parse_referrer
+from datetime import date
 
 class IngestionService:
     """Handles the recording of a single pageview event."""
@@ -39,3 +40,9 @@ class IngestionService:
         elif ua.is_tablet:
             return 'tablet'
         return 'desktop'
+    
+class EventService:
+    
+    def get_site_events(self, site_id: int, day: date):
+        """Get all events for a site on a given day"""
+        return Event.objects.filter(site_id=site_id, timestamp__date=day)

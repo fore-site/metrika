@@ -95,12 +95,8 @@ AUTHENTICATION_BACKENDS = ['accounts.backends.CustomModelBackend']
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -146,7 +142,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-STATICFILES_DIRS = BASE_DIR / 'static'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 AUTH_USER_MODEL = 'accounts.User'
 
