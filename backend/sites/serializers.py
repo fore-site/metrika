@@ -14,8 +14,9 @@ class UpdateSiteSerializer(serializers.Serializer):
     def validate_domain(self, value):
         return validate_domain(value)
 
+
 class SiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Site
         fields = ['public_id', 'domain', 'tracking_token', 'is_active', 'created_at']
-        read_only_fields = ['id', 'tracking_token', 'created_at']
+        read_only_fields = ['tracking_token', 'created_at']

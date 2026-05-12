@@ -1,26 +1,59 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers
 from rest_framework.views import APIView
 from common.response import api_response
 from .models import Site
 from .services import SiteService
 from .serializers import CreateSiteSerializer, UpdateSiteSerializer, SiteSerializer
 from .permissions import IsSiteOwner
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiExample
 from common.openapi import envelope_success
 
 @extend_schema(
     methods=['GET'],
     summary="List sites",
-    description="Get a list of all your active sites.",
+    description="Get a list of a user's active sites.",
     request=None,
-    responses=envelope_success,
+    responses=SiteSerializer,
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': [
+                    {
+                        'public_id': 'uuid',
+                        'domain': 'string',
+                        'tracking_token': 'uuid',
+                        'is_active': 'bool',
+                        'created_at': 'timestamp'
+                    }
+                ],
+                'message': 'This is a success response'
+            }
+        )
+    ]
 )
 @extend_schema(
     methods=['POST'],
     summary="Create site",
     description="Create a new site.",
     request=CreateSiteSerializer,
-    responses=envelope_success,
+    responses=SiteSerializer,
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {
+                        'public_id': 'uuid',
+                        'domain': 'string',
+                        'tracking_token': 'uuid',
+                        'is_active': 'bool',
+                        'created_at': 'timestamp'
+                    },
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class SiteListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -59,21 +92,48 @@ class SiteListCreateView(generics.ListCreateAPIView):
     summary="Get site",
     description="Get details of a specific site.",
     request=None,
-    responses=envelope_success,
+    responses=SiteSerializer,
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {
+                        'public_id': 'uuid',
+                        'domain': 'string',
+                        'tracking_token': 'uuid',
+                        'is_active': 'bool',
+                        'created_at': 'timestamp'
+                    },
+                'message': 'This is a success response'
+            }
+        )
+    ]
 )
 @extend_schema(
     methods=['PUT'],
     summary="Update site",
     description="Update the domain of a site.",
     request=UpdateSiteSerializer,
-    responses=envelope_success,
+    responses=SiteSerializer,
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {
+                        'domain': 'string',
+                    },
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 @extend_schema(
     methods=['DELETE'],
     summary="Delete site",
     description="Delete a specific site.",
     request=None,
-    responses=envelope_success,
+    responses=None,
 )
 class SiteDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsSiteOwner]

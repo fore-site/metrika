@@ -14,7 +14,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParamet
             name='X-Tracking-Token',
             type=str,
             location=OpenApiParameter.HEADER,
-            description='The tracking token of your site (Available on the dashboard)',
+            description="The tracking token of a user's site.",
             required=True,
         )
     ],

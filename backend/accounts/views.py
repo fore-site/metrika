@@ -30,7 +30,7 @@ from .serializers import (
     PasswordChangeSerializer,
     ResendVerificationSerializer,
 )
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
 from common.openapi import envelope_success
 from common.utils import get_client_ip, get_user_agent
 import logging 
@@ -41,7 +41,22 @@ logger = logging.getLogger(__name__)
     summary='Register a new user',
     description='Creates an inactive user and sends a verification email.',
     request=RegisterSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class RegisterView(generics.CreateAPIView):
     permission_classes = []
@@ -78,7 +93,22 @@ class RegisterView(generics.CreateAPIView):
     summary='Verify email after registration',
     description="Validate (user_id, token) and sets a registered user's inactive status to active.",
     request=VerifyEmailSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class VerifyEmailView(APIView):
     permission_classes = []
@@ -105,7 +135,26 @@ class VerifyEmailView(APIView):
     summary='Obtain JWT tokens',
     description="Returns an access token in the body and sets an httpOnly refresh token cookie.",
     request=TokenObtainPairSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {
+                'access': 'string',
+            },
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {
+                    'access': 'string'
+                },
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class LoginView(BaseLoginView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -173,7 +222,26 @@ class LoginView(BaseLoginView):
     summary='Obtain new access token',
     description="Uses the refresh token from httpOnly cookie to obtain and return an access token in the body.",
     request=None,  # No request body needed since refresh token is in cookie
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {
+                'access': 'string',
+            },
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {
+                    'access': 'string'
+                },
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 @method_decorator(csrf_protect, name='dispatch')
 class TokenRefreshView(BaseRefreshView):
@@ -224,7 +292,22 @@ class TokenRefreshView(BaseRefreshView):
 @extend_schema(
     summary='Verify JWT token validity',
     description="Verifies if a JWT token is valid.",
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class TokenVerifyView(BaseVerifyView):
     def post(self, request, *args, **kwargs):
@@ -241,7 +324,22 @@ class TokenVerifyView(BaseVerifyView):
     summary='Reset password',
     description="Sends a password reset link to user's mail.",
     request=PasswordResetSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class PasswordResetView(APIView):
     permission_classes = []
@@ -271,7 +369,22 @@ class PasswordResetView(APIView):
     summary='Confirm password reset',
     description="Validates (user_id, token, new_password) and sets user's new password in database.",
     request=PasswordResetConfirmSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class PasswordResetConfirmView(APIView):
     permission_classes = []
@@ -305,14 +418,43 @@ class PasswordResetConfirmView(APIView):
     methods=['GET'],
     summary='View user profile',
     description="Returns user's current detail.",
-    responses=envelope_success,
+    responses=UserSerializer,
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {
+                    'id': 'int',
+                    'email': 'string',
+                    'name': 'string',
+                    'is_staff': 'bool',
+                    'is_active': 'bool',
+                    'date_joined': 'timestamp'
+                },
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 @extend_schema(
     methods=['PATCH'],
     summary='Update user profile',
     description="Updates user's current detail.",
     request=NameChangeSerializer,
-    responses=envelope_success,
+    responses=NameChangeSerializer,
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {
+                    'name': 'string',
+                },
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -330,15 +472,30 @@ class MeView(APIView):
         new_name = serializer.validated_data['name']
         AccountService().update_name(request.user, new_name)
         # Return updated user data
-        user_serializer = UserSerializer(request.user)
-        return api_response(200, data=user_serializer.data, message='Name updated.')
+
+        return api_response(200, data=serializer.data, message='Name updated.')
 
 
 @extend_schema(
     summary='Change user password',
     description="Sets new password for an authenticated user and deletes httponly refresh token cookie.",
     request=PasswordChangeSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class PasswordChangeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -384,7 +541,22 @@ class PasswordChangeView(APIView):
     summary='Resend email verification link',
     description="Resends a newly generated email verification link to the user's email.",
     request=ResendVerificationSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class ResendVerificationView(APIView):
     permission_classes = []
@@ -414,7 +586,22 @@ class ResendVerificationView(APIView):
     summary='Logout user',
     description="Retrieves and blacklists refresh token from httponly cookie.",
     request=None,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 @method_decorator(csrf_protect, name='dispatch')
 class LogoutView(APIView):
@@ -443,7 +630,22 @@ class LogoutView(APIView):
     summary='Change email',
     description="Initiates email change and sends verification link to the new email address.",
     request=InitiateEmailChangeSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class InitiateEmailChangeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -468,7 +670,22 @@ class InitiateEmailChangeView(APIView):
     summary='Confirm email change',
     description="Validate (user_id, token) and update new email of user in database.",
     request=ConfirmEmailChangeSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class ConfirmEmailChangeView(APIView):
     permission_classes = []
@@ -517,7 +734,22 @@ class ConfirmEmailChangeView(APIView):
     summary='Delete account',
     description="Destructive action to permanently delete account from database.",
     request=DeleteAccountSerializer,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {},
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class DeleteAccountView(APIView):
     permission_classes = [permissions.IsAuthenticated]
