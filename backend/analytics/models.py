@@ -6,6 +6,10 @@ class DailySiteStats(models.Model):
     date = models.DateField(db_index=True)
     visitors = models.PositiveIntegerField(default=0)
     pageviews = models.PositiveIntegerField(default=0)
+    bounce_rate = models.DecimalField(decimal_places=2)
+    avg_visit_duration = models.DecimalField(decimal_places=2)
+    views_per_visit = models.DecimalField(decimal_places=2)
+    total_visits = models.PositiveIntegerField(default=0)
 
     class Meta:
         unique_together = ('site', 'date')

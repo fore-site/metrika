@@ -1,5 +1,5 @@
-from datetime import date
-from django.db import transaction
+from datetime import date, timedelta
+from django.db import transaction,
 from django.db.models import Sum, Count
 from .models import (
     DailySiteStats,
@@ -12,14 +12,106 @@ from .models import (
 )
 from tracking.services import EventService
 from django.utils import timezone
+from collections import defaultdict
 
 
 class AggregationService:
     """Populate daily summary tables for a given site and date."""
 
+    def get_session_metrics(self, site_id, day: date | None = None, 
+                            start_date: date | None = None, 
+                            end_date: date | None = None):
+        """
+        Returns dict with:
+          - total_sessions
+          - bounce_rate (0-100)
+          - avg_duration_seconds
+          - views_per_visit
+        """
+        # 1. Fetch all events for the day, ordered by visitor and time
+        if day:
+            events = (EventService().get_site_events(site_id, day)
+                .order_by('visitor_id', 'timestamp')
+                .values('visitor_id', 'timestamp')
+            )
+        else:
+            if start_date and end_date:
+                events = (EventService().get_site_events_date_range(site_id, start_date, end_date)
+                        .order_by('visitor_id', 'timestamp')
+                        .values('visitor_id', 'timestamp')
+                        )
+            else:
+                raise Exception('Must pass in either day or start and end date.')
+
+        # 2. Group events by visitor_id
+        visitor_events = defaultdict(list)
+        for e in events:
+            visitor_events[e['visitor_id']].append(e['timestamp'])
+
+        # 3. Split into sessions (30-minute timeout)
+        SESSION_TIMEOUT = timedelta(minutes=30)
+        total_sessions = 0
+        single_page_sessions = 0
+        total_duration = timedelta(0)   # for average duration
+        total_pageviews_in_sessions = 0
+
+        for visitor_id, timestamps in visitor_events.items():
+            # timestamps are already sorted (thanks to ORM ordering)
+            session_start = None
+            session_end = None
+            pages_in_session = 0
+
+            for ts in timestamps:
+                if session_start is None:
+                    # Start a new session
+                    session_start = ts
+                    session_end = ts
+                    pages_in_session = 1
+                    total_sessions += 1
+                elif (ts - session_end) > SESSION_TIMEOUT:
+                    # End previous session and start new one
+                    # First, record the old session
+                    total_pageviews_in_sessions += pages_in_session
+                    if pages_in_session == 1:
+                        single_page_sessions += 1
+                    total_duration += (session_end - session_start)
+
+                    # Start new session
+                    session_start = ts
+                    session_end = ts
+                    pages_in_session = 1
+                    total_sessions += 1
+                else:
+                    # Extend current session
+                    session_end = ts
+                    pages_in_session += 1
+
+            # The last session of this visitor
+            if session_start:
+                total_pageviews_in_sessions += pages_in_session
+                if pages_in_session == 1:
+                    single_page_sessions += 1
+                total_duration += (session_end - session_start)
+
+        # 4. Calculate metrics
+        bounce_rate = (single_page_sessions / total_sessions * 100) if total_sessions else 0
+        avg_duration_seconds = (
+            total_duration.total_seconds() / total_sessions
+        ) if total_sessions else 0
+        views_per_visit = (
+            total_pageviews_in_sessions / total_sessions
+        ) if total_sessions else 0
+
+        return {
+            'total_sessions': total_sessions,
+            'bounce_rate': round(bounce_rate, 1),
+            'avg_duration_seconds': round(avg_duration_seconds),
+            'views_per_visit': round(views_per_visit, 1),
+        }
+
     def aggregate_date(self, site_id: int, day: date):
         events = EventService().get_site_events(site_id, day)
-
+        session_metrics = self.get_session_metrics(site_id, day)
         if not events.exists():
             return
 
@@ -381,3 +473,46 @@ class StatsQueryService:
 
 
     
+from datetime import datetime, timedelta, timezone
+from django.db.models.functions import TruncHour
+
+class StatsQueryService:
+    # … existing methods …
+
+    def get_hourly_timeseries(self, site_id: int, start_dt: datetime, end_dt: datetime):
+        """
+        Return one row per hour with visitors and pageviews.
+        start_dt / end_dt are timezone‑aware datetimes (UTC).
+        """
+        return (
+            Event.objects.filter(
+                site_id=site_id,
+                timestamp__gte=start_dt,
+                timestamp__lt=end_dt,
+            )
+            .annotate(hour=TruncHour('timestamp'))
+            .values('hour')
+            .annotate(
+                visitors=Count('visitor_id', distinct=True),
+                pageviews=Count('id'),
+            )
+            .order_by('hour')
+        )
+
+    def get_realtime_stats(self, site_id: int, minutes: int = 5):
+        """
+        Return visitors and pageviews in the last `minutes` minutes.
+        """
+        since = timezone.now() - timedelta(minutes=minutes)
+        data = Event.objects.filter(
+            site_id=site_id,
+            timestamp__gte=since,
+        ).aggregate(
+            visitors=Count('visitor_id', distinct=True),
+            pageviews=Count('id'),
+        )
+        return {
+            'visitors': data['visitors'] or 0,
+            'pageviews': data['pageviews'] or 0,
+            'last_updated': timezone.now().isoformat(),
+        }

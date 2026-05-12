@@ -24,7 +24,7 @@ class Command(BaseCommand):
             try:
                 # Failed aggregation of one site triggers rollback and does not affect other sites
                 with transaction.atomic():
-                    AggregationService().aggregate_date(site.id, target_date)
+                    AggregationService().aggregate_date(site.id, day=target_date)
             except Exception as e:
                 self.stderr.write(f'Aggregate failed for {site.domain}: {e}')
         self.stdout.write('Done.')

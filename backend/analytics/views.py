@@ -494,3 +494,51 @@ class TopCitiesView(BaseStatsView):
             stats = StatsQueryService().get_today_top_cities(site.id, limit)
 
         return api_response(200, data=list(stats))
+
+
+from datetime import datetime, timedelta, timezone
+from django.utils import timezone as django_timezone
+
+class HourlyTimeseriesView(BaseStatsView):
+    def get(self, request, site_id):
+        site = self.get_site(site_id)
+        if not site:
+            return api_response(404, message='Site not found.')
+
+        # Default: last 24 hours
+        now = django_timezone.now()
+        start = now - timedelta(hours=24)
+        if 'start' in request.query_params:
+            start = datetime.fromisoformat(request.query_params['start'])
+            # Make aware if naive (assume UTC)
+            if django_timezone.is_naive(start):
+                start = django_timezone.make_aware(start, timezone.utc)
+        if 'end' in request.query_params:
+            end = datetime.fromisoformat(request.query_params['end'])
+            if django_timezone.is_naive(end):
+                end = django_timezone.make_aware(end, timezone.utc)
+        else:
+            end = now
+
+        data = StatsQueryService().get_hourly_timeseries(site.id, start, end)
+        # Convert hour field to ISO string for JSON
+        result = [
+            {
+                'hour': entry['hour'].isoformat(),
+                'visitors': entry['visitors'],
+                'pageviews': entry['pageviews'],
+            }
+            for entry in data
+        ]
+        return api_response(200, data=result)
+
+
+class RealtimeView(BaseStatsView):
+    def get(self, request, site_id):
+        site = self.get_site(site_id)
+        if not site:
+            return api_response(404, message='Site not found.')
+
+        minutes = int(request.query_params.get('minutes', 5))
+        stats = StatsQueryService().get_realtime_stats(site.id, minutes)
+        return api_response(200, data=stats)
