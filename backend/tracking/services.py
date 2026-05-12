@@ -46,3 +46,11 @@ class EventService:
     def get_site_events(self, site_id: int, day: date):
         """Get all events for a site on a given day"""
         return Event.objects.filter(site_id=site_id, timestamp__date=day)
+
+    def get_site_events_date_range(self, site_id: int, start: date, end: date):
+        """Get all events for a site for a given start and end date range"""
+        return Event.objects.filter(
+            site_id=site_id,
+            timestamp__date__gte=start,
+            timestamp__date__lte=end
+        )

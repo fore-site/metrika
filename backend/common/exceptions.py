@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 def custom_exception_handler(exc, context):
     # Get a standard error response
     response = exception_handler(exc, context)
+    logger.error(f"Error encountered: {exc}, {context}")
 
     if response is not None:
         status_code = response.status_code
@@ -51,5 +52,5 @@ def custom_exception_handler(exc, context):
         )
 
     # For unhandled exceptions, return a generic 500 envelope
-    logger.error(f"Unhandled error: {exc}, {context}")
+
     return api_response(500, message='An unexpected error occurred.')
