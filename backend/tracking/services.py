@@ -2,7 +2,7 @@ from user_agents import parse as ua_parse
 from .models import Event
 from .geo import geolocate
 from .referrer import parse_referrer
-from datetime import date
+from datetime import date, datetime
 
 class IngestionService:
     """Handles the recording of a single pageview event."""
@@ -53,4 +53,19 @@ class EventService:
             site_id=site_id,
             timestamp__date__gte=start,
             timestamp__date__lte=end
+        )
+    
+    def get_site_events_hour_range(self, site_id: int, start_dt: datetime, end_dt: datetime):
+        """Get all events for a site for a given hour range"""
+        return Event.objects.filter(
+            site_id=site_id,
+            timestamp__gte=start_dt,
+            timestamp__lt=end_dt
+        )
+    
+    def get_site_events_realtime(self, site_id: int, timestamp: datetime):
+        """Get all events for a site for a given timestamp range (realtime)"""
+        return Event.objects.filter(
+            site_id=site_id,
+            timestamp__gte=timestamp
         )

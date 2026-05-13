@@ -1,5 +1,5 @@
-from datetime import date, timedelta
-from django.db import transaction,
+from datetime import date, timedelta, datetime
+from django.db import transaction
 from django.db.models import Sum, Count
 from .models import (
     DailySiteStats,
@@ -13,6 +13,8 @@ from .models import (
 from tracking.services import EventService
 from django.utils import timezone
 from collections import defaultdict
+from decimal import Decimal
+from django.db.models.functions import TruncHour
 
 
 class AggregationService:
@@ -103,10 +105,10 @@ class AggregationService:
         ) if total_sessions else 0
 
         return {
-            'total_sessions': total_sessions,
-            'bounce_rate': round(bounce_rate, 1),
-            'avg_duration_seconds': round(avg_duration_seconds),
-            'views_per_visit': round(views_per_visit, 1),
+            'total_visits': total_sessions,
+            'bounce_rate': round(bounce_rate),
+            'avg_visit_duration': round(avg_duration_seconds),
+            'views_per_visit': str(round(views_per_visit, 2)),
         }
 
     def aggregate_date(self, site_id: int, day: date):
@@ -127,6 +129,10 @@ class AggregationService:
                 defaults={
                     'visitors': site_data['visitors'],
                     'pageviews': site_data['pageviews'],
+                    'total_visits': session_metrics.get('total_visits'),
+                    'bounce_rate': session_metrics.get('bounce_rate'),
+                    'avg_visit_duration': session_metrics.get('avg_visit_duration'),
+                    'views_per_visit': Decimal(str(session_metrics.get('views_per_visit')))
                 }
             )
 
@@ -227,14 +233,20 @@ class StatsQueryService:
             visitors=Sum('visitors'),
             pageviews=Sum('pageviews'),
         )
+        session_metrics = AggregationService().get_session_metrics(site_id, start_date=start_date, end_date=end_date)
+        stats.update(session_metrics)
         return stats
 
     def get_timeseries(self, site_id: int, start_date: date, end_date: date):
-        return DailySiteStats.objects.filter(
+        stats = DailySiteStats.objects.filter(
             site_id=site_id,
             date__gte=start_date,
             date__lte=end_date,
-        ).order_by('date').values('date', 'visitors', 'pageviews')
+        ).order_by('date').values('date', 'visitors', 'pageviews', 
+                                  'total_visits', 'bounce_rate', 'avg_visit_duration',
+                                  'views_per_visit')
+
+        return stats
 
     def get_top_pages(self, site_id: int, start_date: date, end_date: date, limit: int =10):
         return DailyPageStats.objects.filter(
@@ -315,7 +327,9 @@ class StatsQueryService:
         return DailySiteStats.objects.filter(
             site_id=site_id,
             date=day
-        ).order_by('date').values('date', 'visitors', 'pageviews')
+        ).order_by('date').values('date', 'visitors', 'pageviews', 
+                                  'total_visits', 'bounce_rate', 'avg_visit_duration',
+                                  'views_per_visit')
 
     def get_anyday_top_pages(self, site_id: int, day: date, limit: int =10):
         return DailyPageStats.objects.filter(
@@ -379,24 +393,23 @@ class StatsQueryService:
     # Raw‑event helpers for the current (incomplete) day
     def get_today_site_summary(self, site_id):
         today = timezone.now().date()
-        return EventService().get_site_events(site_id, today).aggregate(
+        stats = EventService().get_site_events(site_id, today).aggregate(
             visitors=Count('visitor_id', distinct=True),
             pageviews=Count('id'),
         )
+        session_metrics = AggregationService().get_session_metrics(site_id, day=today)
+        stats.update(session_metrics)
+        return stats
 
     def get_today_timeseries(self, site_id: int):
         """Return one data point for today from raw events."""
         today = date.today()
-        data = EventService().get_site_events(site_id, today).aggregate(
-            visitors=Count('visitor_id', distinct=True),
-            pageviews=Count('id'),
-        )
+        data = (EventService().get_site_events(site_id, today)
+                .order_by('date').values('date', 'visitors', 'pageviews', 
+                                  'total_visits', 'bounce_rate', 'avg_visit_duration',
+                                  'views_per_visit'))
         
-        return [{
-            'date': today.isoformat(),
-            'visitors': data['visitors'] or 0,
-            'pageviews': data['pageviews'] or 0,
-        }]
+        return data
 
     def get_today_top_pages(self, site_id: int, limit: int = 10):
         today = date.today()
@@ -472,24 +485,12 @@ class StatsQueryService:
         return top_cities
 
 
-    
-from datetime import datetime, timedelta, timezone
-from django.db.models.functions import TruncHour
-
-class StatsQueryService:
-    # … existing methods …
-
     def get_hourly_timeseries(self, site_id: int, start_dt: datetime, end_dt: datetime):
         """
         Return one row per hour with visitors and pageviews.
         start_dt / end_dt are timezone‑aware datetimes (UTC).
         """
-        return (
-            Event.objects.filter(
-                site_id=site_id,
-                timestamp__gte=start_dt,
-                timestamp__lt=end_dt,
-            )
+        return (EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
             .annotate(hour=TruncHour('timestamp'))
             .values('hour')
             .annotate(
@@ -504,10 +505,7 @@ class StatsQueryService:
         Return visitors and pageviews in the last `minutes` minutes.
         """
         since = timezone.now() - timedelta(minutes=minutes)
-        data = Event.objects.filter(
-            site_id=site_id,
-            timestamp__gte=since,
-        ).aggregate(
+        data = EventService().get_site_events_realtime(site_id, since).aggregate(
             visitors=Count('visitor_id', distinct=True),
             pageviews=Count('id'),
         )

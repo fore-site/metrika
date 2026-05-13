@@ -27,17 +27,27 @@ class BaseStatsView(APIView):
         return site
 
     def parse_date_range(self):
-        """Extract start/end dates from query params; default to last 30 days."""
+        """Extract start/end dates from query params; default to today."""
         end = None
-        start = date.today()
+        start = None
+        hour = None
+        day = None
         try:
             if 'start' in self.request.query_params:
                 start = date.fromisoformat(self.request.query_params['start'])
             if 'end' in self.request.query_params:
                 end = date.fromisoformat(self.request.query_params['end'])
+            if 'hour' in self.request.query_params:
+                hour = int(self.request.query_params['hour'])
+            if 'day' in self.request.query_params:
+                day = date.fromisoformat(self.request.query_params['day'])
         except ValueError as e:
             raise ValueError(str(e))
-        return start, end
+        return {
+            'range': [start, end],
+            'hour': hour,
+            'day': day,
+        }
 
     def get_limit(self, default=10):
         """Extract limit from query params, clamped to 1-100."""
@@ -80,13 +90,15 @@ class SummaryView(BaseStatsView):
         if not site:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_site_summary(site.id, start, end)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_site_summary(site.id, start)
-        if start == date.today() and not end:
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_site_summary(site.id, date_arg['range'][0], date_arg['range'[1]])
+        if date_arg.get('day') and date_arg.get('day') != date.today():
+            stats = StatsQueryService().get_anyday_site_summary(site.id, date_arg['day'])
+        if date_arg.get('hour'):
+            pass
+        else:
             stats = StatsQueryService().get_today_site_summary(site.id)
         
         return api_response(status.HTTP_200_OK, data=stats)
