@@ -7,10 +7,10 @@ class DailySiteStats(models.Model):
     date = models.DateField(db_index=True)
     visitors = models.PositiveIntegerField(default=0)
     pageviews = models.PositiveIntegerField(default=0)
-    bounce_rate = models.PositiveIntegerField(default=0)
-    avg_visit_duration = models.PositiveIntegerField(default=0)
-    views_per_visit = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0'))
-    total_visits = models.PositiveIntegerField(default=0)
+    single_page_sessions = models.PositiveIntegerField(default=0)
+    total_duration_seconds = models.PositiveIntegerField(default=0, help_text="Sum of all session lengths")
+    total_pageviews_in_sessions = models.PositiveIntegerField(default=0, help_text="Total no of pageviews that were part of a visit (session)")
+    total_visits = models.PositiveIntegerField(default=0, help_text="Total sessions in a day")
 
     class Meta:
         unique_together = ('site', 'date')

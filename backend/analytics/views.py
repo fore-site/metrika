@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from common.response import api_response
@@ -8,7 +8,7 @@ from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from common.openapi import envelope_success
-
+from django.utils import timezone
 
 
 class BaseStatsView(APIView):
@@ -27,27 +27,40 @@ class BaseStatsView(APIView):
         return site
 
     def parse_date_range(self):
-        """Extract start/end dates from query params; default to today."""
-        end = None
-        start = None
-        hour = None
-        day = None
+        """Parse query params."""
         try:
-            if 'start' in self.request.query_params:
-                start = date.fromisoformat(self.request.query_params['start'])
-            if 'end' in self.request.query_params:
-                end = date.fromisoformat(self.request.query_params['end'])
-            if 'hour' in self.request.query_params:
-                hour = int(self.request.query_params['hour'])
-            if 'day' in self.request.query_params:
-                day = date.fromisoformat(self.request.query_params['day'])
+            if self.request.query_params.get('interval') == '24h':
+                return {'hour': '24h'}
+            elif self.request.query_params.get('interval') == 'custom':
+                if self.request.query_params.get('start') and self.request.query_params.get('end'):
+                    start = date.fromisoformat(self.request.query_params['start'])
+                    end = date.fromisoformat(self.request.query_params['end'])
+                    return {'range': {'start': start, 'end': end}}
+            elif self.request.query_params.get('interval') == 'day':
+                if self.request.query_params.get('day'):
+                    day = date.fromisoformat(self.request.query_params['day'])
+                    if day != date.today():
+                        return {'day': day}
+                    else:
+                        return {'today': day}
+            elif self.request.query_params.get('interval') == 'month-to-date':
+                pass
+            elif self.request.query_params.get('interval') == 'year-to-date':
+                pass
+            elif self.request.query_params.get('interval') == '91d':
+                start = timezone.now() - timedelta(days=91)
+                end = timezone.now() - timedelta(days=1)
+                return {'range': {'start': start, 'end': end}}
+            elif self.request.query_params.get('interval') == '31d':
+                start = timezone.now() - timedelta(days=31)
+                end =  timezone.now() - timedelta(days=1)
+                return {'range': {'start': start, 'end': end}}
+            else:
+                return {}
         except ValueError as e:
             raise ValueError(str(e))
-        return {
-            'range': [start, end],
-            'hour': hour,
-            'day': day,
-        }
+        return {}
+
 
     def get_limit(self, default=10):
         """Extract limit from query params, clamped to 1-100."""
@@ -63,11 +76,32 @@ class BaseStatsView(APIView):
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day""",
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -78,9 +112,11 @@ class BaseStatsView(APIView):
         )
     ],
     summary="Get summary stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end.
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges.
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.
     Get summary stats.""",
     responses=envelope_success,
 )
@@ -93,11 +129,13 @@ class SummaryView(BaseStatsView):
         date_arg = self.parse_date_range()
         stats = {}
         if date_arg.get('range'):
-            stats = StatsQueryService().get_site_summary(site.id, date_arg['range'][0], date_arg['range'[1]])
-        if date_arg.get('day') and date_arg.get('day') != date.today():
+            stats = StatsQueryService().get_site_summary(site.id, date_arg['range']['start'], date_arg['range'['end']])
+        elif date_arg.get('day'):
             stats = StatsQueryService().get_anyday_site_summary(site.id, date_arg['day'])
-        if date_arg.get('hour'):
-            pass
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_site_summary(site.id, start_dt=end, end_dt=now)
         else:
             stats = StatsQueryService().get_today_site_summary(site.id)
         
@@ -106,11 +144,32 @@ class SummaryView(BaseStatsView):
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day """,
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -121,10 +180,13 @@ class SummaryView(BaseStatsView):
         )
     ],
     summary="Get timeseries stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end. 
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.
     Get timeseries stats for visualization (graph plotting, etc).
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges""",
+""",
     responses=envelope_success,
 )
 class TimeseriesView(BaseStatsView):
@@ -133,13 +195,17 @@ class TimeseriesView(BaseStatsView):
         if not site:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_timeseries(site.id, start, end)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_timeseries(site.id, start)
-        if start == date.today() and not end:
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_timeseries(site.id, date_arg['range']['start'], date_arg['range']['end'])
+        elif date_arg.get('day'):
+            stats = StatsQueryService().get_anyday_timeseries(site.id, date_arg['day'])
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_timeseries(site.id, start_dt=end, end_dt=now)
+        else:
             stats = StatsQueryService().get_today_timeseries(site.id)
 
         return api_response(status.HTTP_200_OK, data=list(stats))
@@ -147,11 +213,32 @@ class TimeseriesView(BaseStatsView):
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day """,
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -169,10 +256,13 @@ class TimeseriesView(BaseStatsView):
         ),
     ],
     summary="Get top pages viewed stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end. 
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.
     Get top pages viewed.
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges""",
+""",
     responses=envelope_success,
 )
 class TopPagesView(BaseStatsView):
@@ -181,14 +271,18 @@ class TopPagesView(BaseStatsView):
         if not site:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         limit = self.get_limit(10)
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_top_pages(site.id, start, end, limit)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_top_pages(site.id, start, limit)
-        if start == date.today() and not end:
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_top_pages(site.id, date_arg['range']['start'], date_arg['range']['end'], limit)
+        elif date_arg.get('day'):
+            stats = StatsQueryService().get_anyday_top_pages(site.id, date_arg['day'], limit)
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_top_pages(site.id, start_dt=end, end_dt=now, limit=limit)
+        else:
             stats = StatsQueryService().get_today_top_pages(site.id, limit)
 
         return api_response(status.HTTP_200_OK, data=list(stats))
@@ -196,11 +290,32 @@ class TopPagesView(BaseStatsView):
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day """,
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -218,10 +333,13 @@ class TopPagesView(BaseStatsView):
         ),
     ],
     summary="Get top referrers stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end. 
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.    
     Get top referrers stats i.e source and medium e.g Organic search, Google.
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges""",
+    """,
     responses=envelope_success,
 )
 class TopReferrersView(BaseStatsView):
@@ -230,26 +348,50 @@ class TopReferrersView(BaseStatsView):
         if not site:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         limit = self.get_limit(10)
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_top_referrers(site.id, start, end, limit)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_top_referrers(site.id, start, limit)
-        if start == date.today() and not end:
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_top_referrers(site.id, date_arg['range']['start'], date_arg['range']['end'], limit)
+        elif date_arg.get('day'):
+            stats = StatsQueryService().get_anyday_top_referrers(site.id, date_arg['day'], limit)
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_top_referrers(site.id, start_dt=end, end_dt=now, limit=limit)
+        else:
             stats = StatsQueryService().get_today_top_referrers(site.id, limit)
-
         return api_response(status.HTTP_200_OK, data=list(stats))
 
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day """,
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -260,10 +402,13 @@ class TopReferrersView(BaseStatsView):
         )
     ],
     summary="Get countries stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end. 
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.
     Get countries visiting the site.
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges""",
+""",
     responses=envelope_success,
 )
 class CountriesView(BaseStatsView):
@@ -272,13 +417,17 @@ class CountriesView(BaseStatsView):
         if not site:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_country_breakdown(site.id, start, end)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_country_breakdown(site.id, start)
-        if start == date.today() and not end:
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_country_breakdown(site.id, date_arg['range']['start'], date_arg['range']['end'])
+        elif date_arg.get('day'):
+            stats = StatsQueryService().get_anyday_country_breakdown(site.id, date_arg['day'])
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_country_breakdown(site.id, start_dt=end, end_dt=now)
+        else:
             stats = StatsQueryService().get_today_country_breakdown(site.id)
 
         return api_response(status.HTTP_200_OK, data=list(stats))
@@ -286,11 +435,32 @@ class CountriesView(BaseStatsView):
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day """,
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -301,10 +471,13 @@ class CountriesView(BaseStatsView):
         )
     ],
     summary="Get devices stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end. 
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.
     Get devices used to visit the site.
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges""",
+""",
     responses=envelope_success,
 )
 class DevicesView(BaseStatsView):
@@ -313,13 +486,17 @@ class DevicesView(BaseStatsView):
         if not site:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_device_breakdown(site.id, start, end)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_device_breakdown(site.id, start)
-        if start == date.today() and not end:
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_device_breakdown(site.id, date_arg['range']['start'], date_arg['range']['end'])
+        elif date_arg.get('day'):
+            stats = StatsQueryService().get_anyday_device_breakdown(site.id, date_arg['day'])
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_device_breakdown(site.id, start_dt=end, end_dt=now)
+        else:
             stats = StatsQueryService().get_today_device_breakdown(site.id)
 
         return api_response(status.HTTP_200_OK, data=list(stats))
@@ -327,11 +504,32 @@ class DevicesView(BaseStatsView):
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day """,
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -342,10 +540,13 @@ class DevicesView(BaseStatsView):
         )
     ],
     summary="Get browsers stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end. 
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.
     Get browsers used to visit the site.
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges""",
+""",
     responses=envelope_success,
 )
 class BrowsersView(BaseStatsView):
@@ -354,13 +555,17 @@ class BrowsersView(BaseStatsView):
         if not site:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_browser_breakdown(site.id, start, end)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_browser_breakdown(site.id, start)
-        if start == date.today() and not end:
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_browser_breakdown(site.id, date_arg['range']['start'], date_arg['range']['end'])
+        elif date_arg.get('day'):
+            stats = StatsQueryService().get_anyday_browser_breakdown(site.id, date_arg['day'])
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_browser_breakdown(site.id, start_dt=end, end_dt=now)
+        else:
             stats = StatsQueryService().get_today_browser_breakdown(site.id)
 
         return api_response(status.HTTP_200_OK, data=list(stats))
@@ -368,11 +573,32 @@ class BrowsersView(BaseStatsView):
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day """,
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -383,10 +609,13 @@ class BrowsersView(BaseStatsView):
         )
     ],
     summary="Get operating system stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end. 
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.
     Get operating systems used when visiting the site.
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges""",
+""",
     responses=envelope_success,
 )
 class OSView(BaseStatsView):
@@ -395,13 +624,17 @@ class OSView(BaseStatsView):
         if not site:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_os_breakdown(site.id, start, end)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_os_breakdown(site.id, start)
-        if start == date.today() and not end:
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_os_breakdown(site.id, date_arg['range']['start'], date_arg['range']['end'])
+        elif date_arg.get('day'):
+            stats = StatsQueryService().get_anyday_os_breakdown(site.id, date_arg['day'])
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_os_breakdown(site.id, start_dt=end, end_dt=now)
+        else:
             stats = StatsQueryService().get_today_os_breakdown(site.id)
 
         return api_response(status.HTTP_200_OK, data=list(stats))
@@ -412,11 +645,32 @@ class OSView(BaseStatsView):
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day """,
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -434,10 +688,13 @@ class OSView(BaseStatsView):
         ),
     ],
     summary="Get top regions stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end. 
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.
     Get top regions visiting the site.
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges""",
+""",
     responses=envelope_success,
 )
 class TopRegionsView(BaseStatsView):
@@ -446,14 +703,18 @@ class TopRegionsView(BaseStatsView):
         if not site:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         limit = self.get_limit(10)
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_top_regions(site.id, start, end, limit)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_top_regions(site.id, start, limit)
-        if start == date.today() and not end:
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_top_regions(site.id, date_arg['range']['start'], date_arg['range']['end'], limit)
+        elif date_arg.get('day'):
+            stats = StatsQueryService().get_anyday_top_regions(site.id, date_arg['day'], limit)
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_top_regions(site.id, start_dt=end, end_dt=now, limit=limit)
+        else:
             stats = StatsQueryService().get_today_top_regions(site.id, limit)
 
         return api_response(200, data=list(stats))
@@ -461,11 +722,32 @@ class TopRegionsView(BaseStatsView):
 @extend_schema(
     parameters=[
         OpenApiParameter(
+            name='interval',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="""Select the interval (day, 24h or custom).
+            day: follow up with day query params and pass in the specific date,
+            24h: return stat from 24 hours ago,
+            custom: follow up with a start and end query params to define a date range,
+            year-to-date: return stat from beginning of the current year, 
+            month-to-date: return start from the beginning of the current month,
+            31d: return stat from the last 31 days, excluding current day,
+            91d: return stat from the last 91 days, excluding current day """,
+            required=False,
+        ),
+        OpenApiParameter(
+            name='day',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            required=False,
+        ),
+        OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
-            required=True,
+            required=False,
         ),
         OpenApiParameter(
             name='end',
@@ -483,10 +765,13 @@ class TopRegionsView(BaseStatsView):
         ),
     ],
     summary="Get top cities stats for a given date or date range.",
-    description="""Pass in a valid ISO 8601 format string as query params to start or end. 
+    description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
+    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
+    Pass both start and end params for date ranges. Interval must be set to day
+    Set interval as 24h to fetch stats for the past 24 hours.
+    No query params defaults to today's stats.
     Get top cities visiting the site.
-    Only pass in start param if you need to fetch stats for a specific date.
-    Pass both start and end params for date ranges""",
+""",
     responses=envelope_success,
 )
 class TopCitiesView(BaseStatsView):
@@ -495,62 +780,17 @@ class TopCitiesView(BaseStatsView):
         if not site:
             return api_response(404, message='Site not found.')
 
-        start, end = self.parse_date_range()
+        date_arg = self.parse_date_range()
         limit = self.get_limit(10)
         stats = {}
-        if start != date.today() and end:
-            stats = StatsQueryService().get_top_cities(site.id, start, end, limit)
-        if start != date.today() and not end:
-            stats = StatsQueryService().get_anyday_top_cities(site.id, start, limit)
-        if start == date.today() and not end:
-            stats = StatsQueryService().get_today_top_cities(site.id, limit)
-
-        return api_response(200, data=list(stats))
-
-
-from datetime import datetime, timedelta, timezone
-from django.utils import timezone as django_timezone
-
-class HourlyTimeseriesView(BaseStatsView):
-    def get(self, request, site_id):
-        site = self.get_site(site_id)
-        if not site:
-            return api_response(404, message='Site not found.')
-
-        # Default: last 24 hours
-        now = django_timezone.now()
-        start = now - timedelta(hours=24)
-        if 'start' in request.query_params:
-            start = datetime.fromisoformat(request.query_params['start'])
-            # Make aware if naive (assume UTC)
-            if django_timezone.is_naive(start):
-                start = django_timezone.make_aware(start, timezone.utc)
-        if 'end' in request.query_params:
-            end = datetime.fromisoformat(request.query_params['end'])
-            if django_timezone.is_naive(end):
-                end = django_timezone.make_aware(end, timezone.utc)
+        if date_arg.get('range'):
+            stats = StatsQueryService().get_top_cities(site.id, date_arg['range']['start'], date_arg['range']['end'], limit)
+        elif date_arg.get('day'):
+            stats = StatsQueryService().get_anyday_top_cities(site.id, date_arg['day'], limit)
+        elif date_arg.get('hour'):
+            now = timezone.now()
+            end = now - timedelta(hours=24)
+            stats = StatsQueryService().get_hourly_top_cities(site.id, start_dt=end, end_dt=now, limit=limit)
         else:
-            end = now
-
-        data = StatsQueryService().get_hourly_timeseries(site.id, start, end)
-        # Convert hour field to ISO string for JSON
-        result = [
-            {
-                'hour': entry['hour'].isoformat(),
-                'visitors': entry['visitors'],
-                'pageviews': entry['pageviews'],
-            }
-            for entry in data
-        ]
-        return api_response(200, data=result)
-
-
-class RealtimeView(BaseStatsView):
-    def get(self, request, site_id):
-        site = self.get_site(site_id)
-        if not site:
-            return api_response(404, message='Site not found.')
-
-        minutes = int(request.query_params.get('minutes', 5))
-        stats = StatsQueryService().get_realtime_stats(site.id, minutes)
-        return api_response(200, data=stats)
+            stats = StatsQueryService().get_today_top_cities(site.id, limit)
+        return api_response(200, data=list(stats))
