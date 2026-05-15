@@ -9,7 +9,9 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from common.openapi import envelope_success
 from django.utils import timezone
+import logging
 
+logger = logging.getLogger(__name__)
 
 class BaseStatsView(APIView):
     """
@@ -44,9 +46,14 @@ class BaseStatsView(APIView):
                     else:
                         return {'today': day}
             elif self.request.query_params.get('interval') == 'month-to-date':
-                pass
+                start = date.today().replace(day=1)
+                end = timezone.now() - timedelta(days=1)
+
+                return {'range': {'start': start, 'end': end}}
             elif self.request.query_params.get('interval') == 'year-to-date':
-                pass
+                start = date.today().replace(month=1, day=1)
+                end = timezone.now() - timedelta(days=1)
+                return {'range': {'start': start, 'end': end}}
             elif self.request.query_params.get('interval') == '91d':
                 start = timezone.now() - timedelta(days=91)
                 end = timezone.now() - timedelta(days=1)
@@ -127,6 +134,7 @@ class SummaryView(BaseStatsView):
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
         date_arg = self.parse_date_range()
+        logger.info(f'date args: {date_arg}')
         stats = {}
         if date_arg.get('range'):
             stats = StatsQueryService().get_site_summary(site.id, date_arg['range']['start'], date_arg['range'['end']])
@@ -208,7 +216,7 @@ class TimeseriesView(BaseStatsView):
         else:
             stats = StatsQueryService().get_today_timeseries(site.id)
 
-        return api_response(status.HTTP_200_OK, data=list(stats))
+        return api_response(status.HTTP_200_OK, data=stats)
 
 @extend_schema(
     parameters=[

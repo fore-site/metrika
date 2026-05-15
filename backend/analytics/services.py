@@ -101,15 +101,6 @@ class AggregationService:
                     single_page_sessions += 1
                 total_duration += (session_end - session_start)
 
-        # 4. Calculate metrics
-        bounce_rate = (single_page_sessions / total_sessions * 100) if total_sessions else 0
-        avg_duration_seconds = (
-            total_duration.total_seconds() / total_sessions
-        ) if total_sessions else 0
-        views_per_visit = (
-            total_pageviews_in_sessions / total_sessions
-        ) if total_sessions else 0
-
         return {
             'total_visits': total_sessions,
             'single_page_sessions': single_page_sessions,
