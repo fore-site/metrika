@@ -1,2 +1,3 @@
 # metrika
-A web analytics service and platform
+
+A web analytics service platform
