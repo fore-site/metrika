@@ -1,6 +1,7 @@
 from datetime import date, timedelta, datetime
 from django.db import transaction
-from django.db.models import Sum, Count, BaseManager
+from django.db.models import Sum, Count
+from django.db.models.manager import BaseManager
 from .models import (
     DailySiteStats,
     DailyPageStats,
@@ -63,8 +64,8 @@ class AggregationService:
         total_duration = timedelta(0)   # for average duration
         total_pageviews_in_sessions = 0
 
-        for visitor_id, timestamps in visitor_events.items():
-            # timestamps are already sorted (thanks to ORM ordering)
+        for _, timestamps in visitor_events.items():
+
             session_start = None
             session_end = None
             pages_in_session = 0
@@ -235,24 +236,14 @@ class StatsQueryService:
         summary['avg_duration_seconds'] = round(summary['total_duration_seconds'] / sessions * 100) if sessions else 0
         summary['views_per_visit'] = round(summary['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
 
+        del summary['total_pageviews_in_sessions']
+        del summary['total_duration_seconds']
+        del summary['single_page_sessions']
+
         return summary
 
-    def _timeseries(self, stat: BaseManager[DailySiteStats]):
-        rows = stat.order_by('date').values('date', 'visitors', 'pageviews', 
-                                  'total_visits', 'single_page_sessions', 'total_duration_seconds',
-                                  'total_pageviews_in_sessions')
-        timeseries = []
-        for row in rows:
-            sessions = row['total_visits'] or 0
-            row['bounce_rate'] = round(row['single_page_sessions'] / sessions * 100) if sessions else 0
-            row['avg_durations_seconds'] = round(row['total_duration_seconds'] / sessions * 100) if sessions else 0
-            row['views_per_visit'] = round(row['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
-
-            timeseries.append(row)
-        return timeseries
-    
     def _top_pages(self, stat: BaseManager[DailyPageStats]):
-        return stat.values('path').annotate(
+        return stat.values('url').annotate(
             visitors=Sum('visitors'),
             pageviews=Sum('pageviews'),
         ).order_by('-pageviews')
@@ -309,8 +300,9 @@ class StatsQueryService:
             day = event['date'] 
             session_metrics = AggregationService().get_session_metrics(site_id, day=day)
             sessions = session_metrics['total_visits']
+            event['total_visits'] = sessions
             event['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-            event['avg_durations_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
+            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
             event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
             timeseries.append(event)
         return timeseries
@@ -409,8 +401,9 @@ class StatsQueryService:
             end = start + timedelta(hours=1)
             session_metrics = AggregationService().get_session_metrics(site_id, start_dt=start, end_dt=end)
             sessions = session_metrics['total_visits']
+            event['total_visits'] = sessions
             event['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-            event['avg_durations_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
+            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
             event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
             timeseries.append(event)
         return timeseries
@@ -486,7 +479,7 @@ class StatsQueryService:
         sessions = session_metrics['total_visits']
 
         stats['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-        stats['avg_durations_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
+        stats['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
         stats['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
 
         return stats
@@ -509,8 +502,9 @@ class StatsQueryService:
             end = start + timedelta(hours=1)
             session_metrics = AggregationService().get_session_metrics(site_id, start_dt=start, end_dt=end)
             sessions = session_metrics['total_visits']
+            event['total_visits'] = sessions
             event['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-            event['avg_durations_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
+            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
             event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
             timeseries.append(event)
         return timeseries
@@ -594,7 +588,7 @@ class StatsQueryService:
         sessions = session_metrics['total_visits']
         
         stats['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-        stats['avg_durations_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
+        stats['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
         stats['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
     
         return stats
@@ -618,8 +612,9 @@ class StatsQueryService:
             end = start + timedelta(hours=1)
             session_metrics = AggregationService().get_session_metrics(site_id, start_dt=start, end_dt=end)
             sessions = session_metrics['total_visits']
+            event['total_visits'] = sessions
             event['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-            event['avg_durations_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
+            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
             event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
             timeseries.append(event)
         return timeseries

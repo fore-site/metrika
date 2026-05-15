@@ -5,9 +5,8 @@ from common.response import api_response
 from sites.services import SiteService
 from .services import StatsQueryService
 from rest_framework import status
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
-from common.openapi import envelope_success
 from django.utils import timezone
 import logging
 
@@ -86,7 +85,7 @@ class BaseStatsView(APIView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -100,32 +99,54 @@ class BaseStatsView(APIView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         )
     ],
-    summary="Get summary stats for a given date or date range.",
+    summary="Get summary stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get summary stats.""",
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Default example',
+            value={
+                'data': {
+                    'visitors': 'string',
+                    'pageviews': 'string',
+                    'total_visits': 'string',
+                    'bounce_rate': 'string',
+                    'avg_duration_seconds': 'string',
+                    'views_per_visit': 'string'
+                },
+                'message': 'This is a success response'
+            },
+            response_only=True
+        )
+    ]
 )
 class SummaryView(BaseStatsView):
     def get(self, request, site_id):
@@ -137,7 +158,7 @@ class SummaryView(BaseStatsView):
         logger.info(f'date args: {date_arg}')
         stats = {}
         if date_arg.get('range'):
-            stats = StatsQueryService().get_site_summary(site.id, date_arg['range']['start'], date_arg['range'['end']])
+            stats = StatsQueryService().get_site_summary(site.id, date_arg['range'].get('start'), date_arg['range'].get('end'))
         elif date_arg.get('day'):
             stats = StatsQueryService().get_anyday_site_summary(site.id, date_arg['day'])
         elif date_arg.get('hour'):
@@ -155,7 +176,7 @@ class SummaryView(BaseStatsView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -169,25 +190,25 @@ class SummaryView(BaseStatsView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         )
     ],
-    summary="Get timeseries stats for a given date or date range.",
+    summary="Get timeseries stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
@@ -195,7 +216,50 @@ class SummaryView(BaseStatsView):
     No query params defaults to today's stats.
     Get timeseries stats for visualization (graph plotting, etc).
 """,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Hour timeseries example',
+            value={
+                'data': [
+                    {
+                    'hour': 'string',
+                    'visitors': 'string',
+                    'pageviews': 'string',
+                    'total_visits': 'string',
+                    'bounce_rate': 'string',
+                    'avg_duration_seconds': 'string',
+                    'views_per_visit': 'string'
+                }
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Date timeseries example',
+            value={
+                'data': [
+                    {
+                    'date': 'string',
+                    'visitors': 'string',
+                    'pageviews': 'string',
+                    'total_visits': 'string',
+                    'bounce_rate': 'string',
+                    'avg_duration_seconds': 'string',
+                    'views_per_visit': 'string'
+                }
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+    ]
 )
 class TimeseriesView(BaseStatsView):
     def get(self, request, site_id):
@@ -224,7 +288,7 @@ class TimeseriesView(BaseStatsView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -238,21 +302,21 @@ class TimeseriesView(BaseStatsView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
        OpenApiParameter(
@@ -263,7 +327,7 @@ class TimeseriesView(BaseStatsView):
             required=False,
         ),
     ],
-    summary="Get top pages viewed stats for a given date or date range.",
+    summary="Get top pages viewed.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
@@ -271,7 +335,28 @@ class TimeseriesView(BaseStatsView):
     No query params defaults to today's stats.
     Get top pages viewed.
 """,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Hour timeseries example',
+            value={
+                'data': [
+                    {
+                    'url': 'string',
+                    'visitors': 'string',
+                    'pageviews': 'string',
+                },
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+    ]
 )
 class TopPagesView(BaseStatsView):
     def get(self, request, site_id):
@@ -301,7 +386,7 @@ class TopPagesView(BaseStatsView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -315,21 +400,21 @@ class TopPagesView(BaseStatsView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
        OpenApiParameter(
@@ -340,7 +425,7 @@ class TopPagesView(BaseStatsView):
             required=False,
         ),
     ],
-    summary="Get top referrers stats for a given date or date range.",
+    summary="Get top referrers stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
@@ -348,7 +433,29 @@ class TopPagesView(BaseStatsView):
     No query params defaults to today's stats.    
     Get top referrers stats i.e source and medium e.g Organic search, Google.
     """,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Hour timeseries example',
+            value={
+                'data': [
+                    {
+                    'source': 'string',
+                    'medium': 'string',
+                    'visitors': 'string',
+                    'pageviews': 'string',
+                },
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+    ]
 )
 class TopReferrersView(BaseStatsView):
     def get(self, request, site_id):
@@ -377,7 +484,7 @@ class TopReferrersView(BaseStatsView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -391,25 +498,25 @@ class TopReferrersView(BaseStatsView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         )
     ],
-    summary="Get countries stats for a given date or date range.",
+    summary="Get top countries stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
@@ -417,7 +524,27 @@ class TopReferrersView(BaseStatsView):
     No query params defaults to today's stats.
     Get countries visiting the site.
 """,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Hour timeseries example',
+            value={
+                'data': [
+                    {
+                    'country': 'string',
+                    'visitors': 'string',
+                },
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+    ]
 )
 class CountriesView(BaseStatsView):
     def get(self, request, site_id):
@@ -446,7 +573,7 @@ class CountriesView(BaseStatsView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -460,25 +587,25 @@ class CountriesView(BaseStatsView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         )
     ],
-    summary="Get devices stats for a given date or date range.",
+    summary="Get device types.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
@@ -486,7 +613,27 @@ class CountriesView(BaseStatsView):
     No query params defaults to today's stats.
     Get devices used to visit the site.
 """,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Hour timeseries example',
+            value={
+                'data': [
+                    {
+                    'device_type': 'string',
+                    'visitors': 'string',
+                },
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+    ]
 )
 class DevicesView(BaseStatsView):
     def get(self, request, site_id):
@@ -515,7 +662,7 @@ class DevicesView(BaseStatsView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -529,25 +676,25 @@ class DevicesView(BaseStatsView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         )
     ],
-    summary="Get browsers stats for a given date or date range.",
+    summary="Get browsers stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
@@ -555,7 +702,27 @@ class DevicesView(BaseStatsView):
     No query params defaults to today's stats.
     Get browsers used to visit the site.
 """,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Hour timeseries example',
+            value={
+                'data': [
+                    {
+                    'browser': 'string',
+                    'visitors': 'string',
+                },
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+    ]
 )
 class BrowsersView(BaseStatsView):
     def get(self, request, site_id):
@@ -584,7 +751,7 @@ class BrowsersView(BaseStatsView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -598,25 +765,25 @@ class BrowsersView(BaseStatsView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         )
     ],
-    summary="Get operating system stats for a given date or date range.",
+    summary="Get operating system stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
@@ -624,7 +791,27 @@ class BrowsersView(BaseStatsView):
     No query params defaults to today's stats.
     Get operating systems used when visiting the site.
 """,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Hour timeseries example',
+            value={
+                'data': [
+                    {
+                    'os': 'string',
+                    'visitors': 'string',
+                },
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+    ]
 )
 class OSView(BaseStatsView):
     def get(self, request, site_id):
@@ -656,7 +843,7 @@ class OSView(BaseStatsView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -670,21 +857,21 @@ class OSView(BaseStatsView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
        OpenApiParameter(
@@ -695,7 +882,7 @@ class OSView(BaseStatsView):
             required=False,
         ),
     ],
-    summary="Get top regions stats for a given date or date range.",
+    summary="Get top regions.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
@@ -703,7 +890,27 @@ class OSView(BaseStatsView):
     No query params defaults to today's stats.
     Get top regions visiting the site.
 """,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Hour timeseries example',
+            value={
+                'data': [
+                    {
+                    'region': 'string',
+                    'visitors': 'string',
+                },
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+    ]
 )
 class TopRegionsView(BaseStatsView):
     def get(self, request, site_id):
@@ -733,7 +940,7 @@ class TopRegionsView(BaseStatsView):
             name='interval',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="""Select the interval (day, 24h or custom).
+            description="""Select the interval:
             day: follow up with day query params and pass in the specific date,
             24h: return stat from 24 hours ago,
             custom: follow up with a start and end query params to define a date range,
@@ -747,21 +954,21 @@ class TopRegionsView(BaseStatsView):
             name='day',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to day.",
             required=False,
         ),
         OpenApiParameter(
             name='start',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
         OpenApiParameter(
             name='end',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected",
+            description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
        OpenApiParameter(
@@ -772,7 +979,7 @@ class TopRegionsView(BaseStatsView):
             required=False,
         ),
     ],
-    summary="Get top cities stats for a given date or date range.",
+    summary="Get top cities.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
     Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
     Pass both start and end params for date ranges. Interval must be set to day
@@ -780,7 +987,27 @@ class TopRegionsView(BaseStatsView):
     No query params defaults to today's stats.
     Get top cities visiting the site.
 """,
-    responses=envelope_success,
+    responses=OpenApiResponse(
+        response={
+            'data': {},
+            'message': 'Success message'
+        }
+    ),
+    examples=[
+        OpenApiExample(
+            'Hour timeseries example',
+            value={
+                'data': [
+                    {
+                    'city': 'string',
+                    'visitors': 'string',
+                },
+                ],
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+    ]
 )
 class TopCitiesView(BaseStatsView):
     def get(self, request, site_id):

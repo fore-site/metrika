@@ -19,12 +19,12 @@ class DailySiteStats(models.Model):
 class DailyPageStats(models.Model):
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='daily_page_stats')
     date = models.DateField(db_index=True)
-    path = models.TextField()
+    url = models.TextField()
     visitors = models.PositiveIntegerField(default=0)
     pageviews = models.PositiveIntegerField(default=0)
 
     class Meta:
-        unique_together = ('site', 'date', 'path')
+        unique_together = ('site', 'date', 'url')
         ordering = ['-pageviews']
 
 class DailyReferrerStats(models.Model):

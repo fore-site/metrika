@@ -27,14 +27,14 @@ envelope_error = inline_serializer(
 )
 
 # Single reusable success envelope – data is generic DictField
-envelope_success = inline_serializer(
-    name='SuccessEnvelope',
-    fields={
-        'data': serializers.DictField(),
-        'message': serializers.CharField(default='This is a success response.'),
-    },
-    source=None,
-)
+# envelope_success = inline_serializer(
+#     name='SuccessEnvelope',
+#     fields={
+#         'data': serializers.DictField(),
+#         'message': serializers.CharField(default='This is a success response.'),
+#     },
+#     source=None,
+# )
 
 
 class EnvelopeAutoSchema(AutoSchema):

@@ -31,7 +31,6 @@ from .serializers import (
     ResendVerificationSerializer,
 )
 from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
-from common.openapi import envelope_success
 from common.utils import get_client_ip, get_user_agent
 import logging 
 

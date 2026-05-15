@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions, status, serializers
+from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from common.response import api_response
 from .models import Site
@@ -6,7 +6,6 @@ from .services import SiteService
 from .serializers import CreateSiteSerializer, UpdateSiteSerializer, SiteSerializer
 from .permissions import IsSiteOwner
 from drf_spectacular.utils import extend_schema, OpenApiExample
-from common.openapi import envelope_success
 
 @extend_schema(
     methods=['GET'],
