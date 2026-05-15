@@ -119,8 +119,8 @@ class BaseStatsView(APIView):
     ],
     summary="Get summary stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date.
+    Pass both start and end params for date ranges. 
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get summary stats.""",
@@ -210,8 +210,8 @@ class SummaryView(BaseStatsView):
     ],
     summary="Get timeseries stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date.
+    Pass both start and end params for date ranges. 
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get timeseries stats for visualization (graph plotting, etc).
@@ -329,8 +329,8 @@ class TimeseriesView(BaseStatsView):
     ],
     summary="Get top pages viewed.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date. 
+    Pass both start and end params for date ranges. 
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get top pages viewed.
@@ -427,8 +427,8 @@ class TopPagesView(BaseStatsView):
     ],
     summary="Get top referrers stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date. 
+    Pass both start and end params for date ranges. 
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.    
     Get top referrers stats i.e source and medium e.g Organic search, Google.
@@ -518,8 +518,8 @@ class TopReferrersView(BaseStatsView):
     ],
     summary="Get top countries stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date.
+    Pass both start and end params for date ranges. 
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get countries visiting the site.
@@ -607,8 +607,8 @@ class CountriesView(BaseStatsView):
     ],
     summary="Get device types.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date.
+    Pass both start and end params for date ranges. 
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get devices used to visit the site.
@@ -696,8 +696,8 @@ class DevicesView(BaseStatsView):
     ],
     summary="Get browsers stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date.
+    Pass both start and end params for date ranges.
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get browsers used to visit the site.
@@ -785,8 +785,8 @@ class BrowsersView(BaseStatsView):
     ],
     summary="Get operating system stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date.
+    Pass both start and end params for date ranges.
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get operating systems used when visiting the site.
@@ -835,8 +835,6 @@ class OSView(BaseStatsView):
         return api_response(status.HTTP_200_OK, data=list(stats))
 
 
-# On‑demand endpoints (from raw Event table)
-
 @extend_schema(
     parameters=[
         OpenApiParameter(
@@ -884,8 +882,8 @@ class OSView(BaseStatsView):
     ],
     summary="Get top regions.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date.
+    Pass both start and end params for date ranges.
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get top regions visiting the site.
@@ -981,8 +979,8 @@ class TopRegionsView(BaseStatsView):
     ],
     summary="Get top cities.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
-    Only pass in day param if you need to fetch stats for a specific date. Interval must be set to custom
-    Pass both start and end params for date ranges. Interval must be set to day
+    Only pass in day param if you need to fetch stats for a specific date.
+    Pass both start and end params for date ranges.
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get top cities visiting the site.
