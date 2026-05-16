@@ -2,6 +2,10 @@ from datetime import timedelta
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
+import sys
+
+# True when running the Django test runner (e.g. `manage.py test`).
+TESTING = 'test' in sys.argv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -109,6 +113,14 @@ CACHES = {
         }
     }
 }
+
+# Avoid external Redis dependency during tests.
+if TESTING:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",

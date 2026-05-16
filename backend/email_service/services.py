@@ -7,6 +7,7 @@ from .tasks import send_email_task
 from accounts.models import LoginAttempt
 from django.utils import timezone
 import django_rq
+import sys
 
 
 class EmailService:
@@ -97,9 +98,20 @@ class EmailService:
 
     @staticmethod
     def _enqueue(subject, text_body, html_body, to_email):
+        # During tests, there is no rqworker running. Execute inline so that
+        # Django's locmem email backend updates `django.core.mail.outbox`.
+        if getattr(settings, 'TESTING', False) or 'test' in sys.argv:
+            send_email_task(
+                to_email=to_email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+            )
+            return
+
         django_rq.enqueue(
             send_email_task,
-            to_email=[to_email],
+            to_email=to_email,
             subject=subject,
             text_body=text_body,
             html_body=html_body,

@@ -18,7 +18,7 @@ class LoginSuspicionTests(TestCase):
 
 
     def _create_attempt(self, ip, ua, success=True, timestamp=None):
-        LoginAttempt.objects.create(
+        attempt = LoginAttempt.objects.create(
             user=self.user,
             email=self.user.email,
             ip_address=ip,
@@ -26,6 +26,7 @@ class LoginSuspicionTests(TestCase):
             was_successful=success,
             timestamp=timestamp or self.recent_date,
         )
+        LoginAttempt.objects.filter(pk=attempt.pk).update(timestamp=timestamp or self.recent_date)
 
     def test_no_prior_successful_logins__not_suspicious(self):
         # No login attempts at all
