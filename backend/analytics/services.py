@@ -15,7 +15,7 @@ from tracking.services import EventService
 from tracking.models import Event
 from django.utils import timezone
 from collections import defaultdict
-from django.db.models.functions import TruncHour, TruncDate
+from django.db.models.functions import TruncHour, TruncDate, TruncMonth, TruncYear
 
 
 class AggregationService:
@@ -105,7 +105,7 @@ class AggregationService:
         return {
             'total_visits': total_sessions,
             'single_page_sessions': single_page_sessions,
-            'total_duration_seconds': total_duration.total_seconds(),
+            'total_duration_seconds': int(total_duration.total_seconds()),
             'total_pageviews_in_sessions': total_pageviews_in_sessions,
         }
 
@@ -143,7 +143,7 @@ class AggregationService:
                 DailyPageStats.objects.update_or_create(
                     site_id=site_id,
                     date=day,
-                    path=row['url'],
+                    url=row['url'],
                     defaults={
                         'visitors': row['visitors'],
                         'pageviews': row['pageviews'],
@@ -233,8 +233,8 @@ class StatsQueryService:
         )
         sessions = summary['total_visits'] or 0
         summary['bounce_rate'] = round(summary['single_page_sessions'] / sessions * 100) if sessions else 0
-        summary['avg_duration_seconds'] = round(summary['total_duration_seconds'] / sessions * 100) if sessions else 0
-        summary['views_per_visit'] = round(summary['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
+        summary['avg_duration_seconds'] = round(summary['total_duration_seconds'] / sessions) if sessions else 0
+        summary['views_per_visit'] = round(summary['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
 
         del summary['total_pageviews_in_sessions']
         del summary['total_duration_seconds']
@@ -267,12 +267,12 @@ class StatsQueryService:
         return stat.values('os').annotate(visitors=Sum('visitors')).order_by('-visitors')
 
     def _top_regions(self, event: BaseManager[Event]):
-        return event.values('region').annotate(
+        return event.exclude(region='').values('region').annotate(
             visitors=Count('visitor_id', distinct=True),
         ).order_by('-visitors')
     
     def _top_cities(self, event: BaseManager[Event]):
-        return event.values('city').annotate(
+        return event.exclude(city='').values('city').annotate(
             visitors=Count('visitor_id', distinct=True),
         ).order_by('-visitors')
 
@@ -285,25 +285,26 @@ class StatsQueryService:
         summary = self._site_summary(stats)
         return summary
 
-    def get_timeseries(self, site_id: int, start_date: date, end_date: date):
-        data = (EventService().get_site_events_date_range(site_id, start=start_date, end=end_date)
-                .annotate(date=TruncDate('timestamp'))
-                .values('date')
-                .annotate(
-                    visitors=Count('visitor_id', distinct=True),
-                    pageviews=Count('id'),
-                )
-                .order_by('date')
-        )
+    def get_daily_timeseries(self, site_id: int, start_date: date, end_date: date):
+        """ Return daily data points for a date range"""
+        data = DailySiteStats.objects.filter(
+            site_id=site_id,
+            date__gte=start_date,
+            date__lte=end_date
+        ).values('date', 'visitors', 'pageviews', 
+                 'total_visits', 'single_page_sessions', 'total_duration_seconds', 
+                 'total_pageviews_in_sessions').order_by('date')
         timeseries = []
         for event in data:
-            day = event['date'] 
-            session_metrics = AggregationService().get_session_metrics(site_id, day=day)
-            sessions = session_metrics['total_visits']
-            event['total_visits'] = sessions
-            event['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
-            event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
+            sessions = event['total_visits']
+            event['bounce_rate'] = round(event['single_page_sessions'] / sessions * 100) if sessions else 0
+            event['avg_duration_seconds'] = round(event['total_duration_seconds'] / sessions) if sessions else 0
+            event['views_per_visit'] = round(event['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
+            
+            del event['single_page_sessions']
+            del event['total_duration_seconds']
+            del event['total_pageviews_in_sessions']
+            
             timeseries.append(event)
         return timeseries
 
@@ -403,8 +404,8 @@ class StatsQueryService:
             sessions = session_metrics['total_visits']
             event['total_visits'] = sessions
             event['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
-            event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
+            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions) if sessions else 0
+            event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
             timeseries.append(event)
         return timeseries
     
@@ -479,8 +480,8 @@ class StatsQueryService:
         sessions = session_metrics['total_visits']
 
         stats['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-        stats['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
-        stats['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
+        stats['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions) if sessions else 0
+        stats['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
 
         return stats
 
@@ -504,8 +505,8 @@ class StatsQueryService:
             sessions = session_metrics['total_visits']
             event['total_visits'] = sessions
             event['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
-            event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
+            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions) if sessions else 0
+            event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
             timeseries.append(event)
         return timeseries
 
@@ -546,21 +547,21 @@ class StatsQueryService:
         today = date.today()
         return (EventService().get_site_events(site_id, today)
                 .values('device_type')
-                .annotate(visitors=Sum('visitors'))
+                .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
 
     def get_today_browser_breakdown(self, site_id: int):
         today = date.today()
         return (EventService().get_site_events(site_id, today)
                 .values('browser')
-                .annotate(visitors=Sum('visitors'))
+                .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
 
     def get_today_os_breakdown(self, site_id: int):
         today = date.today()
         return (EventService().get_site_events(site_id, today)
                 .values('os')
-                .annotate(visitors=Sum('visitors'))
+                .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
     
     def get_today_top_regions(self, site_id, limit: int = 10):
@@ -588,8 +589,8 @@ class StatsQueryService:
         sessions = session_metrics['total_visits']
         
         stats['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-        stats['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
-        stats['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
+        stats['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions) if sessions else 0
+        stats['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
     
         return stats
     
@@ -614,8 +615,8 @@ class StatsQueryService:
             sessions = session_metrics['total_visits']
             event['total_visits'] = sessions
             event['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
-            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions * 100) if sessions else 0
-            event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions * 100, 2) if sessions else 0.00
+            event['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions) if sessions else 0
+            event['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
             timeseries.append(event)
         return timeseries
 
@@ -652,19 +653,19 @@ class StatsQueryService:
     def get_hourly_device_breakdown(self, site_id: int, start_dt: datetime, end_dt: datetime):
         return (EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
                 .values('device_type')
-                .annotate(visitors=Sum('visitors'))
+                .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
 
     def get_hourly_browser_breakdown(self, site_id: int, start_dt: datetime, end_dt: datetime):
         return (EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
                 .values('browser')
-                .annotate(visitors=Sum('visitors'))
+                .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
 
     def get_hourly_os_breakdown(self, site_id: int, start_dt: datetime, end_dt: datetime):
         return (EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
                 .values('os')
-                .annotate(visitors=Sum('visitors'))
+                .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
     
     def get_hourly_top_regions(self, site_id, start_dt: datetime, end_dt: datetime, limit: int = 10):
@@ -693,3 +694,73 @@ class StatsQueryService:
     #         'pageviews': data['pageviews'] or 0,
     #         'last_updated': timezone.now().isoformat(),
     #     }
+
+
+    def get_monthly_timeseries(self, site_id: int, start_date: date, end_date: date):
+        """
+        Return one row per month with summed metrics.
+        start_date / end_date are date objects (first/last day of the range).
+        """
+        rows = (
+            DailySiteStats.objects
+            .filter(site_id=site_id, date__gte=start_date, date__lte=end_date)
+            .annotate(month=TruncMonth('date'))
+            .values('month')
+            .annotate(
+                visitors=Sum('visitors'),
+                pageviews=Sum('pageviews'),
+                total_visits=Sum('total_visits'),
+                single_page_sessions=Sum('single_page_sessions'),
+                total_duration_seconds=Sum('total_duration_seconds'),
+                total_pageviews_in_sessions=Sum('total_pageviews_in_sessions'),
+            )
+            .order_by('month')
+        )
+
+        timeseries = []
+        for row in rows:
+            sessions = row['total_visits']
+            row['total_visits'] = sessions
+            row['bounce_rate'] = round(row['single_page_sessions'] / sessions * 100) if sessions else 0
+            row['avg_duration_seconds'] = round(row['total_duration_seconds'] / sessions) if sessions else 0
+            row['views_per_visit'] = round(row['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
+            
+            del row['single_page_sessions']
+            del row['total_pageviews_in_sessions']
+            del row['total_duration_seconds']
+            
+            timeseries.append(row)
+
+        return timeseries
+    
+    def get_yearly_timeseries(self, site_id: int, start_date: date, end_date: date):
+        rows = (
+            DailySiteStats.objects
+            .filter(site_id=site_id, date__gte=start_date, date__lte=end_date)
+            .annotate(year=TruncYear('date'))
+            .values('year')
+            .annotate(
+                visitors=Sum('visitors'),
+                pageviews=Sum('pageviews'),
+                total_visits=Sum('total_visits'),
+                single_page_sessions=Sum('single_page_sessions'),
+                total_duration_seconds=Sum('total_duration_seconds'),
+                total_pageviews_in_sessions=Sum('total_pageviews_in_sessions'),
+            )
+            .order_by('year')
+        )
+
+        timeseries = []
+        for row in rows:
+            sessions = row['total_visits']
+            row['bounce_rate'] = round(row['single_page_sessions'] / sessions * 100) if sessions else 0
+            row['avg_duration_seconds'] = round(row['total_duration_seconds'] / sessions) if sessions else 0
+            row['views_per_visit'] = round(row['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
+            
+            del row['single_page_sessions']
+            del row['total_pageviews_in_sessions']
+            del row['total_duration_seconds']
+            
+            timeseries.append(row)
+
+        return timeseries

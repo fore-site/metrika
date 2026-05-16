@@ -9,6 +9,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiRespon
 from drf_spectacular.types import OpenApiTypes
 from django.utils import timezone
 import logging
+from rest_framework.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -30,42 +31,49 @@ class BaseStatsView(APIView):
     def parse_date_range(self):
         """Parse query params."""
         try:
-            if self.request.query_params.get('interval') == '24h':
+            interval = self.request.query_params.get('interval')
+            if not interval:
+                return {}
+            if interval == '24h':
                 return {'hour': '24h'}
-            elif self.request.query_params.get('interval') == 'custom':
-                if self.request.query_params.get('start') and self.request.query_params.get('end'):
-                    start = date.fromisoformat(self.request.query_params['start'])
-                    end = date.fromisoformat(self.request.query_params['end'])
-                    return {'range': {'start': start, 'end': end}}
-            elif self.request.query_params.get('interval') == 'day':
-                if self.request.query_params.get('day'):
-                    day = date.fromisoformat(self.request.query_params['day'])
-                    if day != date.today():
-                        return {'day': day}
-                    else:
-                        return {'today': day}
-            elif self.request.query_params.get('interval') == 'month-to-date':
+            elif interval == 'custom':
+                if not (self.request.query_params.get('start') and self.request.query_params.get('end')):
+                    raise ValidationError({'detail': 'start and end query params are required when interval=custom.'})
+                start = date.fromisoformat(self.request.query_params['start'])
+                end = date.fromisoformat(self.request.query_params['end'])
+                return {'range': {'start': start, 'end': end}}
+            elif interval == 'day':
+                if not self.request.query_params.get('day'):
+                    raise ValidationError({'detail': 'day query param is required when interval=day.'})
+                day = date.fromisoformat(self.request.query_params['day'])
+                if day != date.today():
+                    return {'day': day}
+                return {'today': day}
+            elif interval == '7d':
+                start = (timezone.now() - timedelta(days=7)).date()
+                end = (timezone.now() - timedelta(days=1)).date()
+                return {'range': {'start': start, 'end': end}}
+            elif interval == '31d':
+                start = (timezone.now() - timedelta(days=31)).date()
+                end = (timezone.now() - timedelta(days=1)).date()
+                return {'range': {'start': start, 'end': end}}
+            elif interval == 'month-to-date':
                 start = date.today().replace(day=1)
-                end = timezone.now() - timedelta(days=1)
+                end = (timezone.now() - timedelta(days=1)).date()
 
                 return {'range': {'start': start, 'end': end}}
-            elif self.request.query_params.get('interval') == 'year-to-date':
+            elif interval == 'year-to-date':
                 start = date.today().replace(month=1, day=1)
-                end = timezone.now() - timedelta(days=1)
+                end = (timezone.now() - timedelta(days=1)).date()
                 return {'range': {'start': start, 'end': end}}
-            elif self.request.query_params.get('interval') == '91d':
-                start = timezone.now() - timedelta(days=91)
-                end = timezone.now() - timedelta(days=1)
-                return {'range': {'start': start, 'end': end}}
-            elif self.request.query_params.get('interval') == '31d':
-                start = timezone.now() - timedelta(days=31)
-                end =  timezone.now() - timedelta(days=1)
+            elif interval == '91d':
+                start = (timezone.now() - timedelta(days=91)).date()
+                end = (timezone.now() - timedelta(days=1)).date()
                 return {'range': {'start': start, 'end': end}}
             else:
-                return {}
+                raise ValidationError({'detail': f'Invalid interval: {interval}.'})
         except ValueError as e:
-            raise ValueError(str(e))
-        return {}
+            raise ValidationError({'detail': str(e)})
 
 
     def get_limit(self, default=10):
@@ -75,6 +83,24 @@ class BaseStatsView(APIView):
             return max(1, min(limit, 100))
         except (ValueError, TypeError):
             return default
+        
+    def auto_granularity(self, date_arg):
+        if not date_arg:
+            raise ValueError('start and end params could not be parsed.')
+
+        start = date_arg.get('start')
+        end = date_arg.get('end')
+
+        delta = (end - start).days
+        if delta == 0:
+            raise ValueError('start and end params cannot be the same date.')
+        elif delta <= 90:
+            return 'day'
+        elif delta <= 730: # 2 years
+            return 'month'
+        else:
+            return 'year'
+
 
 
 # Aggregated endpoints
@@ -270,7 +296,23 @@ class TimeseriesView(BaseStatsView):
         date_arg = self.parse_date_range()
         stats = {}
         if date_arg.get('range'):
-            stats = StatsQueryService().get_timeseries(site.id, date_arg['range']['start'], date_arg['range']['end'])
+            # get granularity 
+            granularity = self.auto_granularity(date_arg['range'])
+            if granularity == 'day':
+                stats = (StatsQueryService()
+                         .get_daily_timeseries(site.id, 
+                                               date_arg['range']['start'], 
+                                               date_arg['range']['end']))
+            elif granularity == 'month':
+                stats = (StatsQueryService()
+                         .get_monthly_timeseries(site.id, 
+                                                 date_arg['range']['start'], 
+                                                 date_arg['range']['end']))
+            else:
+                stats = (StatsQueryService()
+                         .get_yearly_timeseries(site.id, 
+                                                 date_arg['range']['start'], 
+                                                 date_arg['range']['end']))
         elif date_arg.get('day'):
             stats = StatsQueryService().get_anyday_timeseries(site.id, date_arg['day'])
         elif date_arg.get('hour'):

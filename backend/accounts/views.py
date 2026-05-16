@@ -195,7 +195,7 @@ class LoginView(BaseLoginView):
 
             refresh_token = response.data['refresh']
             data = {'access': response.data['access']}
-            print(refresh_token)
+
             samesite = settings.REFRESH_TOKEN_COOKIE_SAMESITE
             max_age = settings.REFRESH_TOKEN_MAX_AGE
 
