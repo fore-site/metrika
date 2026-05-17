@@ -1,6 +1,6 @@
 from rest_framework.response import Response
 
-def api_response(status_code: int, data=None, message: str = '', errors=None) -> Response:
+def api_response(status_code: int, data=None, message: str = '', errors=None, meta=None) -> Response:
     """Build a consistent JSON envelope."""
     is_success = 200 <= status_code < 300
     body = {
@@ -9,8 +9,11 @@ def api_response(status_code: int, data=None, message: str = '', errors=None) ->
 
     if is_success:
         body['data'] = data if data is not None else {}
+        if meta is not None:
+            body['meta'] = meta
     else:
         body['errors'] = errors or []
+
 
     return Response(body, status=status_code)
 

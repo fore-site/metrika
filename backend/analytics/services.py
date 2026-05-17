@@ -308,23 +308,23 @@ class StatsQueryService:
             timeseries.append(event)
         return timeseries
 
-    def get_top_pages(self, site_id: int, start_date: date, end_date: date, limit: int =10):
+    def get_top_pages(self, site_id: int, start_date: date, end_date: date):
         stats = DailyPageStats.objects.filter(
             site_id=site_id,
             date__gte=start_date,
             date__lte=end_date,
         )
         top_pages = self._top_pages(stats)
-        return top_pages[:limit]
+        return top_pages
 
-    def get_top_referrers(self, site_id: int, start_date: date, end_date: date, limit: int =10):
+    def get_top_referrers(self, site_id: int, start_date: date, end_date: date):
         stats = DailyReferrerStats.objects.filter(
             site_id=site_id,
             date__gte=start_date,
             date__lte=end_date,
         )
         top_referrers = self._top_referrers(stats)
-        return top_referrers[:limit]
+        return top_referrers
 
     def get_country_breakdown(self, site_id: int, start_date: date, end_date: date):
         stats = DailyCountryStats.objects.filter(
@@ -364,17 +364,17 @@ class StatsQueryService:
         return os_breakdown
     
     
-    def get_top_regions(self, site_id, start: date, end: date, limit: int = 10):
+    def get_top_regions(self, site_id, start: date, end: date):
         event = EventService().get_site_events_date_range(site_id, start, end)
         
         top_regions = self._top_regions(event)
-        return top_regions[:limit]
+        return top_regions
 
-    def get_top_cities(self, site_id, start: date, end: date, limit: int = 10):
+    def get_top_cities(self, site_id, start: date, end: date):
         event = EventService().get_site_events_date_range(site_id, start, end)
         
         top_cities = self._top_cities(event)
-        return top_cities[:limit]
+        return top_cities
     
     # Helpers for any specific day except current (incomplete) day
     def get_anyday_site_summary(self, site_id: int, day: date):
@@ -409,21 +409,21 @@ class StatsQueryService:
             timeseries.append(event)
         return timeseries
     
-    def get_anyday_top_pages(self, site_id: int, day: date, limit: int =10):
+    def get_anyday_top_pages(self, site_id: int, day: date):
         stats = DailyPageStats.objects.filter(
             site_id=site_id,
             date=day
         )
         top_pages = self._top_pages(stats)
-        return top_pages[:limit]
+        return top_pages
     
-    def get_anyday_top_referrers(self, site_id: int, day: date, limit: int =10):
+    def get_anyday_top_referrers(self, site_id: int, day: date):
         stats = DailyReferrerStats.objects.filter(
             site_id=site_id,
             date=day,
         )
         top_referrers = self._top_referrers(stats)
-        return top_referrers[:limit]
+        return top_referrers
 
     def get_anyday_country_breakdown(self, site_id: int, day: date):
         stats = DailyCountryStats.objects.filter(
@@ -457,17 +457,17 @@ class StatsQueryService:
         os_breakdown = self._os_breakdown(stats)
         return os_breakdown
     
-    def get_anyday_top_regions(self, site_id, day: date, limit: int = 10):
+    def get_anyday_top_regions(self, site_id, day: date):
         event = EventService().get_site_events(site_id, day)
         
         top_regions = self._top_regions(event)
-        return top_regions[:limit]
+        return top_regions
 
-    def get_anyday_top_cities(self, site_id, day: date, limit: int = 10):
+    def get_anyday_top_cities(self, site_id, day: date):
         event = EventService().get_site_events(site_id, day)
         
         top_cities = self._top_cities(event)
-        return top_cities[:limit]
+        return top_cities
 
     # Raw‑event helpers for the current (incomplete) day
     def get_today_site_summary(self, site_id):
@@ -510,7 +510,7 @@ class StatsQueryService:
             timeseries.append(event)
         return timeseries
 
-    def get_today_top_pages(self, site_id: int, limit: int = 10):
+    def get_today_top_pages(self, site_id: int):
         today = date.today()
         return (
             EventService().get_site_events(site_id, today)
@@ -519,10 +519,10 @@ class StatsQueryService:
                 visitors=Count('visitor_id', distinct=True),
                 pageviews=Count('id'),
             )
-            .order_by('-pageviews')[:limit]
+            .order_by('-pageviews')
         )
 
-    def get_today_top_referrers(self, site_id: int, limit: int = 10):
+    def get_today_top_referrers(self, site_id: int):
         today = date.today()
         return (
             EventService().get_site_events(site_id, today)
@@ -531,7 +531,7 @@ class StatsQueryService:
                 visitors=Count('visitor_id', distinct=True),
                 pageviews=Count('id'),
             )
-            .order_by('-pageviews')[:limit]
+            .order_by('-pageviews')
         )
 
     def get_today_country_breakdown(self, site_id: int):
@@ -564,20 +564,20 @@ class StatsQueryService:
                 .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
     
-    def get_today_top_regions(self, site_id, limit: int = 10):
+    def get_today_top_regions(self, site_id):
         today = date.today()
         event = EventService().get_site_events(site_id, today)
         
         top_regions = self._top_regions(event)
-        return top_regions[:limit]
+        return top_regions
 
 
-    def get_today_top_cities(self, site_id, limit: int = 10):
+    def get_today_top_cities(self, site_id):
         today = date.today()
         event = EventService().get_site_events(site_id, today)
         
         top_cities = self._top_cities(event)
-        return top_cities[:limit]
+        return top_cities
 
 
     def get_hourly_site_summary(self, site_id: int, start_dt: datetime, end_dt: datetime):
@@ -620,7 +620,7 @@ class StatsQueryService:
             timeseries.append(event)
         return timeseries
 
-    def get_hourly_top_pages(self, site_id: int, start_dt: datetime, end_dt: datetime, limit: int = 10):
+    def get_hourly_top_pages(self, site_id: int, start_dt: datetime, end_dt: datetime):
         return (
             EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
             .values('url')
@@ -628,10 +628,10 @@ class StatsQueryService:
                 visitors=Count('visitor_id', distinct=True),
                 pageviews=Count('id'),
             )
-            .order_by('-pageviews')[:limit]
+            .order_by('-pageviews')
         )
 
-    def get_hourly_top_referrers(self, site_id: int, start_dt: datetime, end_dt: datetime, limit: int = 10):
+    def get_hourly_top_referrers(self, site_id: int, start_dt: datetime, end_dt: datetime):
         return (
             EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
             .values('source', 'medium')
@@ -639,7 +639,7 @@ class StatsQueryService:
                 visitors=Count('visitor_id', distinct=True),
                 pageviews=Count('id'),
             )
-            .order_by('-pageviews')[:limit]
+            .order_by('-pageviews')
         )
 
     def get_hourly_country_breakdown(self, site_id: int, start_dt: datetime, end_dt: datetime):
@@ -668,33 +668,18 @@ class StatsQueryService:
                 .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
     
-    def get_hourly_top_regions(self, site_id, start_dt: datetime, end_dt: datetime, limit: int = 10):
+    def get_hourly_top_regions(self, site_id, start_dt: datetime, end_dt: datetime):
         event = EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
         
         top_regions = self._top_regions(event)
-        return top_regions[:limit]
+        return top_regions
 
 
-    def get_hourly_top_cities(self, site_id, start_dt: datetime, end_dt: datetime, limit: int = 10):
+    def get_hourly_top_cities(self, site_id, start_dt: datetime, end_dt: datetime):
         event = EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
         
         top_cities = self._top_cities(event)
-        return top_cities[:limit]
-    # def get_realtime_site_summary(self, site_id: int, minutes: int = 5):
-    #     """
-    #     Return visitors and pageviews in the last `minutes` minutes.
-    #     """
-    #     since = timezone.now() - timedelta(minutes=minutes)
-    #     data = EventService().get_site_events_realtime(site_id, since).aggregate(
-    #         visitors=Count('visitor_id', distinct=True),
-    #         pageviews=Count('id'),
-    #     )
-    #     return {
-    #         'visitors': data['visitors'] or 0,
-    #         'pageviews': data['pageviews'] or 0,
-    #         'last_updated': timezone.now().isoformat(),
-    #     }
-
+        return top_cities
 
     def get_monthly_timeseries(self, site_id: int, start_date: date, end_date: date):
         """

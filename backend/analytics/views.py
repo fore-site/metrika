@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from .pagination import AnalyticsPagination
 from common.response import api_response
 from sites.services import SiteService
 from .services import StatsQueryService
@@ -76,14 +77,6 @@ class BaseStatsView(APIView):
             raise ValidationError({'detail': str(e)})
 
 
-    def get_limit(self, default=10):
-        """Extract limit from query params, clamped to 1-100."""
-        try:
-            limit = int(self.request.query_params.get('limit', default))
-            return max(1, min(limit, 100))
-        except (ValueError, TypeError):
-            return default
-        
     def auto_granularity(self, date_arg):
         if not date_arg:
             raise ValueError('start and end params could not be parsed.')
@@ -101,7 +94,24 @@ class BaseStatsView(APIView):
         else:
             return 'year'
 
+    def get_pagination_params(self):
+        """
+        Returns (offset, limit) from query parameters.
+        Defaults: offset=0, limit=50, max limit=200.
+        """
+        try:
+            offset = int(self.request.query_params.get('offset', 0))
+            offset = max(0, offset)
+        except (ValueError, TypeError):
+            offset = 0
 
+        try:
+            limit = int(self.request.query_params.get('limit', 50))
+            limit = max(1, min(limit, 200))
+        except (ValueError, TypeError):
+            limit = 50
+
+        return offset, limit
 
 # Aggregated endpoints
 
@@ -407,20 +417,29 @@ class TopPagesView(BaseStatsView):
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
         date_arg = self.parse_date_range()
-        limit = self.get_limit(10)
+        
         stats = {}
         if date_arg.get('range'):
-            stats = StatsQueryService().get_top_pages(site.id, date_arg['range']['start'], date_arg['range']['end'], limit)
+            stats = StatsQueryService().get_top_pages(site.id, date_arg['range']['start'], date_arg['range']['end'])
         elif date_arg.get('day'):
-            stats = StatsQueryService().get_anyday_top_pages(site.id, date_arg['day'], limit)
+            stats = StatsQueryService().get_anyday_top_pages(site.id, date_arg['day'])
         elif date_arg.get('hour'):
             now = timezone.now()
             end = now - timedelta(hours=24)
-            stats = StatsQueryService().get_hourly_top_pages(site.id, start_dt=end, end_dt=now, limit=limit)
+            stats = StatsQueryService().get_hourly_top_pages(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_top_pages(site.id, limit)
+            stats = StatsQueryService().get_today_top_pages(site.id)
 
-        return api_response(status.HTTP_200_OK, data=list(stats))
+        # Extended view
+        if 'offset' in request.query_params:
+            paginator = AnalyticsPagination()
+            page = paginator.paginate_queryset(stats, request, self)
+            return paginator.get_paginated_response(page)
+        else:
+            # Shrunk view - default on dashboard
+            limit = int(request.query_params.get('limit', 10))
+            results = list(stats[:limit])
+            return api_response(status.HTTP_200_OK, results)
 
 @extend_schema(
     parameters=[
@@ -506,19 +525,28 @@ class TopReferrersView(BaseStatsView):
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
         date_arg = self.parse_date_range()
-        limit = self.get_limit(10)
         stats = {}
         if date_arg.get('range'):
-            stats = StatsQueryService().get_top_referrers(site.id, date_arg['range']['start'], date_arg['range']['end'], limit)
+            stats = StatsQueryService().get_top_referrers(site.id, date_arg['range']['start'], date_arg['range']['end'])
         elif date_arg.get('day'):
-            stats = StatsQueryService().get_anyday_top_referrers(site.id, date_arg['day'], limit)
+            stats = StatsQueryService().get_anyday_top_referrers(site.id, date_arg['day'])
         elif date_arg.get('hour'):
             now = timezone.now()
             end = now - timedelta(hours=24)
-            stats = StatsQueryService().get_hourly_top_referrers(site.id, start_dt=end, end_dt=now, limit=limit)
+            stats = StatsQueryService().get_hourly_top_referrers(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_top_referrers(site.id, limit)
-        return api_response(status.HTTP_200_OK, data=list(stats))
+            stats = StatsQueryService().get_today_top_referrers(site.id)
+
+        # Extended view
+        if 'offset' in request.query_params:
+            paginator = AnalyticsPagination()
+            page = paginator.paginate_queryset(stats, request, self)
+            return paginator.get_paginated_response(page)
+        else:
+            # Shrunk view - default on dashboard
+            limit = int(request.query_params.get('limit', 10))
+            results = list(stats[:limit])
+            return api_response(status.HTTP_200_OK, results)
 
 @extend_schema(
     parameters=[
@@ -607,7 +635,16 @@ class CountriesView(BaseStatsView):
         else:
             stats = StatsQueryService().get_today_country_breakdown(site.id)
 
-        return api_response(status.HTTP_200_OK, data=list(stats))
+        # Extended view
+        if 'offset' in request.query_params:
+            paginator = AnalyticsPagination()
+            page = paginator.paginate_queryset(stats, request, self)
+            return paginator.get_paginated_response(page)
+        else:
+            # Shrunk view - default on dashboard
+            limit = int(request.query_params.get('limit', 10))
+            results = list(stats[:limit])
+            return api_response(status.HTTP_200_OK, results)
 
 @extend_schema(
     parameters=[
@@ -696,7 +733,16 @@ class DevicesView(BaseStatsView):
         else:
             stats = StatsQueryService().get_today_device_breakdown(site.id)
 
-        return api_response(status.HTTP_200_OK, data=list(stats))
+        # Extended view
+        if 'offset' in request.query_params:
+            paginator = AnalyticsPagination()
+            page = paginator.paginate_queryset(stats, request, self)
+            return paginator.get_paginated_response(page)
+        else:
+            # Shrunk view - default on dashboard
+            limit = int(request.query_params.get('limit', 10))
+            results = list(stats[:limit])
+            return api_response(status.HTTP_200_OK, results)
 
 @extend_schema(
     parameters=[
@@ -785,7 +831,17 @@ class BrowsersView(BaseStatsView):
         else:
             stats = StatsQueryService().get_today_browser_breakdown(site.id)
 
-        return api_response(status.HTTP_200_OK, data=list(stats))
+
+        # Extended view
+        if 'offset' in request.query_params:
+            paginator = AnalyticsPagination()
+            page = paginator.paginate_queryset(stats, request, self)
+            return paginator.get_paginated_response(page)
+        else:
+            # Shrunk view - default on dashboard
+            limit = int(request.query_params.get('limit', 10))
+            results = list(stats[:limit])
+            return api_response(status.HTTP_200_OK, results)
 
 @extend_schema(
     parameters=[
@@ -874,7 +930,17 @@ class OSView(BaseStatsView):
         else:
             stats = StatsQueryService().get_today_os_breakdown(site.id)
 
-        return api_response(status.HTTP_200_OK, data=list(stats))
+
+        # Extended view
+        if 'offset' in request.query_params:
+            paginator = AnalyticsPagination()
+            page = paginator.paginate_queryset(stats, request, self)
+            return paginator.get_paginated_response(page)
+        else:
+            # Shrunk view - default on dashboard
+            limit = int(request.query_params.get('limit', 10))
+            results = list(stats[:limit])
+            return api_response(status.HTTP_200_OK, results)
 
 
 @extend_schema(
@@ -959,21 +1025,29 @@ class TopRegionsView(BaseStatsView):
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
 
         date_arg = self.parse_date_range()
-        limit = self.get_limit(10)
         stats = {}
         if date_arg.get('range'):
-            stats = StatsQueryService().get_top_regions(site.id, date_arg['range']['start'], date_arg['range']['end'], limit)
+            stats = StatsQueryService().get_top_regions(site.id, date_arg['range']['start'], date_arg['range']['end'])
         elif date_arg.get('day'):
-            stats = StatsQueryService().get_anyday_top_regions(site.id, date_arg['day'], limit)
+            stats = StatsQueryService().get_anyday_top_regions(site.id, date_arg['day'])
         elif date_arg.get('hour'):
             now = timezone.now()
             end = now - timedelta(hours=24)
-            stats = StatsQueryService().get_hourly_top_regions(site.id, start_dt=end, end_dt=now, limit=limit)
+            stats = StatsQueryService().get_hourly_top_regions(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_top_regions(site.id, limit)
+            stats = StatsQueryService().get_today_top_regions(site.id)
 
-        return api_response(200, data=list(stats))
-
+        # Extended view
+        if 'offset' in request.query_params:
+            paginator = AnalyticsPagination()
+            page = paginator.paginate_queryset(stats, request, self)
+            return paginator.get_paginated_response(page)
+        else:
+            # Shrunk view - default on dashboard
+            limit = int(request.query_params.get('limit', 10))
+            results = list(stats[:limit])
+            return api_response(status.HTTP_200_OK, results)
+        
 @extend_schema(
     parameters=[
         OpenApiParameter(
@@ -1056,16 +1130,25 @@ class TopCitiesView(BaseStatsView):
             return api_response(404, message='Site not found.')
 
         date_arg = self.parse_date_range()
-        limit = self.get_limit(10)
         stats = {}
         if date_arg.get('range'):
-            stats = StatsQueryService().get_top_cities(site.id, date_arg['range']['start'], date_arg['range']['end'], limit)
+            stats = StatsQueryService().get_top_cities(site.id, date_arg['range']['start'], date_arg['range']['end'])
         elif date_arg.get('day'):
-            stats = StatsQueryService().get_anyday_top_cities(site.id, date_arg['day'], limit)
+            stats = StatsQueryService().get_anyday_top_cities(site.id, date_arg['day'])
         elif date_arg.get('hour'):
             now = timezone.now()
             end = now - timedelta(hours=24)
-            stats = StatsQueryService().get_hourly_top_cities(site.id, start_dt=end, end_dt=now, limit=limit)
+            stats = StatsQueryService().get_hourly_top_cities(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_top_cities(site.id, limit)
-        return api_response(200, data=list(stats))
+            stats = StatsQueryService().get_today_top_cities(site.id)
+
+        # Extended view
+        if 'offset' in request.query_params:
+            paginator = AnalyticsPagination()
+            page = paginator.paginate_queryset(stats, request, self)
+            return paginator.get_paginated_response(page)
+        else:
+            # Shrunk view - default on dashboard
+            limit = int(request.query_params.get('limit', 10))
+            results = list(stats[:limit])
+            return api_response(status.HTTP_200_OK, results)

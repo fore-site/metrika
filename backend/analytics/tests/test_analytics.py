@@ -456,11 +456,13 @@ class TopPagesViewTests(AnalyticsTestBase):
     def setUp(self):
         super().setUp()
         self.url = reverse('top-pages', kwargs={'site_id': self.site.id})
-        # Create page stats for 2 days, multiple pages
+        # Create page stats for 2 days, enough rows to exercise pagination.
         for day in [date(2026, 5, 10), date(2026, 5, 11)]:
-            self._create_page_stats(self.site, day, '/', 30, 60)
-            self._create_page_stats(self.site, day, '/about', 20, 35)
-            self._create_page_stats(self.site, day, '/contact', 10, 15)
+            # Make "/" deterministically the top page.
+            self._create_page_stats(self.site, day, '/', visitors=100, pageviews=1000)
+            # 59 additional unique pages (total unique urls = 60).
+            for i in range(59):
+                self._create_page_stats(self.site, day, f'/page-{i}', visitors=1, pageviews=10)
 
     def test_unauthenticated_returns_401(self):
         res = self.client.get(self.url)
@@ -480,10 +482,10 @@ class TopPagesViewTests(AnalyticsTestBase):
         data = res.data['data']
         self.assertIsInstance(data, list)
         self.assertGreaterEqual(len(data), 2)
-        # First entry should be '/' with most pageviews (sum = 60+60=120)
+        # First entry should be '/' with most pageviews.
         top = data[0]
         self.assertEqual(top['url'], '/')
-        self.assertEqual(top['pageviews'], 120)
+        self.assertEqual(top['pageviews'], 2000)
 
     def test_limit_param(self):
         res = self.auth_client.get(
@@ -499,17 +501,77 @@ class TopPagesViewTests(AnalyticsTestBase):
         )
         data = res.data['data']
         top = data[0]
-        self.assertEqual(top['pageviews'], 60)  # only one day
+        self.assertEqual(top['pageviews'], 1000)  # only one day
+
+    def test_shrunk_mode_returns_limited_data_without_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'limit': 10},
+            )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('data', res.data)
+        self.assertNotIn('meta', res.data)
+        self.assertEqual(len(res.data['data']), 10)
+
+    # Paginated mode 
+    def test_paginated_first_page_returns_correct_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('meta', res.data)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)          # unique pages
+        self.assertIsNone(meta['previous'])
+        self.assertIsNotNone(meta['next'])
+
+    def test_paginated_second_page_has_previous_link(self):
+        # Request second page
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 50, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        meta = res.data['meta']
+        self.assertIsNotNone(meta['previous'])
+        # Some implementations omit `offset=0` because it's the default.
+        self.assertTrue('offset=0' in meta['previous'] or 'offset=' not in meta['previous'])
+        # Next should be None because total=60, offset=50, so only 10 remaining
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_offset_beyond_total_returns_empty_and_no_next(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 200, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 0)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)
+        self.assertIsNotNone(meta['previous'])  # can go back
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_custom_limit(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 5},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 5)
+        self.assertEqual(res.data['meta']['limit'], 5)
 
 class TopReferrersViewTests(AnalyticsTestBase):
     def setUp(self):
         super().setUp()
         self.url = reverse('top-referrers', kwargs={'site_id': self.site.id})
-        # Create referrer stats for 2 days
+        # Create referrer stats for 2 days, enough rows to exercise pagination.
         for day in [date(2026, 5, 10), date(2026, 5, 11)]:
-            self._create_referrer_stats(self.site, day, 'Google', 'organic', 25, 50)
-            self._create_referrer_stats(self.site, day, 'Facebook', 'social', 15, 30)
-            self._create_referrer_stats(self.site, day, 'direct', 'none', 10, 20)
+            # Deterministic top referrer.
+            self._create_referrer_stats(self.site, day, 'Google', 'organic', visitors=25, pageviews=50)
+            # 59 additional unique (source, medium) pairs (total unique rows = 60).
+            for i in range(59):
+                self._create_referrer_stats(self.site, day, f'Source-{i}', 'ref', visitors=1, pageviews=1)
 
     def test_returns_top_referrers(self):
         res = self.auth_client.get(
@@ -532,15 +594,75 @@ class TopReferrersViewTests(AnalyticsTestBase):
         # Google: 50 pageviews on May 11
         self.assertEqual(data[0]['pageviews'], 50)
 
+    def test_shrunk_mode_returns_limited_data_without_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'limit': 10},
+            )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('data', res.data)
+        self.assertNotIn('meta', res.data)
+        self.assertEqual(len(res.data['data']), 10)
+
+    # Paginated mode 
+    def test_paginated_first_page_returns_correct_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('meta', res.data)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)          # unique pages
+        self.assertIsNone(meta['previous'])
+        self.assertIsNotNone(meta['next'])
+
+    def test_paginated_second_page_has_previous_link(self):
+        # Request second page
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 50, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        meta = res.data['meta']
+        self.assertIsNotNone(meta['previous'])
+        self.assertTrue('offset=0' in meta['previous'] or 'offset=' not in meta['previous'])
+        # Next should be None because total=60, offset=50, so only 10 remaining
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_offset_beyond_total_returns_empty_and_no_next(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 200, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 0)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)
+        self.assertIsNotNone(meta['previous'])  # can go back
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_custom_limit(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 5},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 5)
+        self.assertEqual(res.data['meta']['limit'], 5)
+
+
 class CountriesViewTests(AnalyticsTestBase):
     def setUp(self):
         super().setUp()
         self.url = reverse('countries', kwargs={'site_id': self.site.id})
-        # Create country stats for 2 days
+        # Create country stats for 2 days, enough rows to exercise pagination.
         for day in [date(2026, 5, 10), date(2026, 5, 11)]:
-            self._create_country_stats(self.site, day, 'United States', 40)
-            self._create_country_stats(self.site, day, 'Germany', 30)
-            self._create_country_stats(self.site, day, 'Japan', 20)
+            # Deterministic top country.
+            self._create_country_stats(self.site, day, 'United States', visitors=40)
+            # 59 additional unique countries (total unique rows = 60).
+            for i in range(59):
+                self._create_country_stats(self.site, day, f'Country-{i}', visitors=1)
 
     def test_returns_countries(self):
         res = self.auth_client.get(
@@ -553,14 +675,74 @@ class CountriesViewTests(AnalyticsTestBase):
         self.assertEqual(top['country'], 'United States')
         self.assertEqual(top['visitors'], 80)  # sum
 
+    def test_shrunk_mode_returns_limited_data_without_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'limit': 10},
+            )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('data', res.data)
+        self.assertNotIn('meta', res.data)
+        self.assertEqual(len(res.data['data']), 10)
+
+    # Paginated mode 
+    def test_paginated_first_page_returns_correct_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('meta', res.data)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)          # unique pages
+        self.assertIsNone(meta['previous'])
+        self.assertIsNotNone(meta['next'])
+
+    def test_paginated_second_page_has_previous_link(self):
+        # Request second page
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 50, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        meta = res.data['meta']
+        self.assertIsNotNone(meta['previous'])
+        self.assertTrue('offset=0' in meta['previous'] or 'offset=' not in meta['previous'])
+        # Next should be None because total=60, offset=50, so only 10 remaining
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_offset_beyond_total_returns_empty_and_no_next(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 200, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 0)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)
+        self.assertIsNotNone(meta['previous'])  # can go back
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_custom_limit(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 5},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 5)
+        self.assertEqual(res.data['meta']['limit'], 5)
+
+
 class DevicesViewTests(AnalyticsTestBase):
     def setUp(self):
         super().setUp()
         self.url = reverse('devices', kwargs={'site_id': self.site.id})
         for day in [date(2026, 5, 10), date(2026, 5, 11)]:
-            self._create_device_stats(self.site, day, 'desktop', 60)
-            self._create_device_stats(self.site, day, 'mobile', 50)
-            self._create_device_stats(self.site, day, 'tablet', 15)
+            # Deterministic top device type.
+            self._create_device_stats(self.site, day, 'desktop', visitors=60)
+            # 59 additional unique device types (total unique rows = 60).
+            for i in range(59):
+                self._create_device_stats(self.site, day, f'device-{i}', visitors=1)
 
     def test_returns_devices(self):
         res = self.auth_client.get(
@@ -572,14 +754,74 @@ class DevicesViewTests(AnalyticsTestBase):
         self.assertEqual(top['device_type'], 'desktop')
         self.assertEqual(top['visitors'], 120)
 
+    def test_shrunk_mode_returns_limited_data_without_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'limit': 10},
+            )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('data', res.data)
+        self.assertNotIn('meta', res.data)
+        self.assertEqual(len(res.data['data']), 10)
+
+    # Paginated mode 
+    def test_paginated_first_page_returns_correct_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('meta', res.data)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)          # unique pages
+        self.assertIsNone(meta['previous'])
+        self.assertIsNotNone(meta['next'])
+
+    def test_paginated_second_page_has_previous_link(self):
+        # Request second page
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 50, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        meta = res.data['meta']
+        self.assertIsNotNone(meta['previous'])
+        self.assertTrue('offset=0' in meta['previous'] or 'offset=' not in meta['previous'])
+        # Next should be None because total=60, offset=50, so only 10 remaining
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_offset_beyond_total_returns_empty_and_no_next(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 200, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 0)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)
+        self.assertIsNotNone(meta['previous'])  # can go back
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_custom_limit(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 5},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 5)
+        self.assertEqual(res.data['meta']['limit'], 5)
+
+
 class BrowsersViewTests(AnalyticsTestBase):
     def setUp(self):
         super().setUp()
         self.url = reverse('browsers', kwargs={'site_id': self.site.id})
         for day in [date(2026, 5, 10), date(2026, 5, 11)]:
-            self._create_browser_stats(self.site, day, 'Chrome', 70)
-            self._create_browser_stats(self.site, day, 'Firefox', 30)
-            self._create_browser_stats(self.site, day, 'Safari', 25)
+            # Deterministic top browser.
+            self._create_browser_stats(self.site, day, 'Chrome', visitors=70)
+            # 59 additional unique browsers (total unique rows = 60).
+            for i in range(59):
+                self._create_browser_stats(self.site, day, f'Browser-{i}', visitors=1)
 
     def test_returns_browsers(self):
         res = self.auth_client.get(
@@ -591,14 +833,74 @@ class BrowsersViewTests(AnalyticsTestBase):
         self.assertEqual(top['browser'], 'Chrome')
         self.assertEqual(top['visitors'], 140)
 
+    def test_shrunk_mode_returns_limited_data_without_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'limit': 10},
+            )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('data', res.data)
+        self.assertNotIn('meta', res.data)
+        self.assertEqual(len(res.data['data']), 10)
+
+    # Paginated mode 
+    def test_paginated_first_page_returns_correct_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('meta', res.data)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)          # unique pages
+        self.assertIsNone(meta['previous'])
+        self.assertIsNotNone(meta['next'])
+
+    def test_paginated_second_page_has_previous_link(self):
+        # Request second page
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 50, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        meta = res.data['meta']
+        self.assertIsNotNone(meta['previous'])
+        self.assertTrue('offset=0' in meta['previous'] or 'offset=' not in meta['previous'])
+        # Next should be None because total=60, offset=50, so only 10 remaining
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_offset_beyond_total_returns_empty_and_no_next(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 200, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 0)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)
+        self.assertIsNotNone(meta['previous'])  # can go back
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_custom_limit(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 5},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 5)
+        self.assertEqual(res.data['meta']['limit'], 5)
+
+
 class OSViewTests(AnalyticsTestBase):
     def setUp(self):
         super().setUp()
         self.url = reverse('os', kwargs={'site_id': self.site.id})
         for day in [date(2026, 5, 10), date(2026, 5, 11)]:
-            self._create_os_stats(self.site, day, 'Windows', 80)
-            self._create_os_stats(self.site, day, 'macOS', 40)
-            self._create_os_stats(self.site, day, 'Linux', 15)
+            # Deterministic top OS.
+            self._create_os_stats(self.site, day, 'Windows', visitors=80)
+            # 59 additional unique OS values (total unique rows = 60).
+            for i in range(59):
+                self._create_os_stats(self.site, day, f'OS-{i}', visitors=1)
 
     def test_returns_os(self):
         res = self.auth_client.get(
@@ -610,27 +912,89 @@ class OSViewTests(AnalyticsTestBase):
         self.assertEqual(top['os'], 'Windows')
         self.assertEqual(top['visitors'], 160)
 
+    def test_shrunk_mode_returns_limited_data_without_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'limit': 10},
+            )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('data', res.data)
+        self.assertNotIn('meta', res.data)
+        self.assertEqual(len(res.data['data']), 10)
+
+    # Paginated mode 
+    def test_paginated_first_page_returns_correct_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('meta', res.data)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)          # unique pages
+        self.assertIsNone(meta['previous'])
+        self.assertIsNotNone(meta['next'])
+
+    def test_paginated_second_page_has_previous_link(self):
+        # Request second page
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 50, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        meta = res.data['meta']
+        self.assertIsNotNone(meta['previous'])
+        self.assertTrue('offset=0' in meta['previous'] or 'offset=' not in meta['previous'])
+        # Next should be None because total=60, offset=50, so only 10 remaining
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_offset_beyond_total_returns_empty_and_no_next(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 200, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 0)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)
+        self.assertIsNotNone(meta['previous'])  # can go back
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_custom_limit(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'custom', 'start': '2026-05-10', 'end': '2026-05-11', 'offset': 0, 'limit': 5},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 5)
+        self.assertEqual(res.data['meta']['limit'], 5)
+
+
 class TopRegionsViewTests(AnalyticsTestBase):
     def setUp(self):
         super().setUp()
         self.url = reverse('top-regions', kwargs={'site_id': self.site.id})
         # Create raw events for a date range, with region values
         test_date = date(2026, 5, 14)
-        # Create multiple visitors per region to see distinct counts
+        # Make "California" deterministically the top region.
         self._make_raw_events(
-            self.site, test_date,
-            visitor_ids=['v1', 'v2', 'v3', 'v4', 'v5'],
-            urls=['/', '/', '/', '/', '/'],
+            self.site,
+            test_date,
+            visitor_ids=[f'ca{i}' for i in range(10)],
+            urls=['/'],
             region='California',
-            country='US'
+            country='US',
         )
-        self._make_raw_events(
-            self.site, test_date,
-            visitor_ids=['v6', 'v7', 'v8'],
-            urls=['/', '/', '/'],
-            region='Bavaria',
-            country='DE'
-        )
+        # 59 additional unique regions (total unique regions = 60).
+        for i in range(59):
+            self._make_raw_events(
+                self.site,
+                test_date,
+                visitor_ids=[f'r{i}'],
+                urls=['/'],
+                region=f'Region-{i}',
+                country='US',
+            )
         # Add some events with empty region to ensure they are excluded
         self._create_event(
             site=self.site,
@@ -645,10 +1009,10 @@ class TopRegionsViewTests(AnalyticsTestBase):
         res = self.auth_client.get(self.url, {'interval': 'day', 'day': '2026-05-14'})
         data = res.data['data']
         self.assertGreaterEqual(len(data), 2)
-        # First region should be California with 5 distinct visitors
+        # First region should be California with most distinct visitors
         top = data[0]
         self.assertEqual(top['region'], 'California')
-        self.assertEqual(top['visitors'], 5)
+        self.assertEqual(top['visitors'], 10)
 
     def test_empty_regions_excluded(self):
         res = self.auth_client.get(self.url, {'interval': 'day', 'day': '2026-05-14'})
@@ -664,33 +1028,95 @@ class TopRegionsViewTests(AnalyticsTestBase):
         )
         self.assertEqual(len(res.data['data']), 0)
 
+    def test_shrunk_mode_returns_limited_data_without_meta(self):
+        res = self.auth_client.get(
+            self.url, {'interval': 'day', 'day': '2026-05-14', 'limit': 10}
+            )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('data', res.data)
+        self.assertNotIn('meta', res.data)
+        self.assertEqual(len(res.data['data']), 10)
+
+    # Paginated mode 
+    def test_paginated_first_page_returns_correct_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'day', 'day': '2026-05-14', 'offset': 0, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('meta', res.data)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)          # unique pages
+        self.assertIsNone(meta['previous'])
+        self.assertIsNotNone(meta['next'])
+
+    def test_paginated_second_page_has_previous_link(self):
+        # Request second page
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'day', 'day': '2026-05-14', 'offset': 50, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        meta = res.data['meta']
+        self.assertIsNotNone(meta['previous'])
+        self.assertTrue('offset=0' in meta['previous'] or 'offset=' not in meta['previous'])
+        # Next should be None because total=60, offset=50, so only 10 remaining
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_offset_beyond_total_returns_empty_and_no_next(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'day', 'day': '2026-05-14', 'offset': 200, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 0)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)
+        self.assertIsNotNone(meta['previous'])  # can go back
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_custom_limit(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'day', 'day': '2026-05-14', 'offset': 0, 'limit': 5},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 5)
+        self.assertEqual(res.data['meta']['limit'], 5)
+
+
 class TopCitiesViewTests(AnalyticsTestBase):
     def setUp(self):
         super().setUp()
         self.url = reverse('top-cities', kwargs={'site_id': self.site.id})
         test_date = date(2026, 5, 14)
+        # Make "Los Angeles" deterministically the top city.
         self._make_raw_events(
-            self.site, test_date,
-            visitor_ids=['a1', 'a2', 'a3'],
-            urls=['/', '/', '/'],
+            self.site,
+            test_date,
+            visitor_ids=[f'la{i}' for i in range(10)],
+            urls=['/'],
             city='Los Angeles',
-            country='US'
+            country='US',
         )
-        self._make_raw_events(
-            self.site, test_date,
-            visitor_ids=['b1', 'b2'],
-            urls=['/', '/'],
-            city='Munich',
-            country='DE'
-        )
+        # 59 additional unique cities (total unique cities = 60).
+        for i in range(59):
+            self._make_raw_events(
+                self.site,
+                test_date,
+                visitor_ids=[f'c{i}'],
+                urls=['/'],
+                city=f'City-{i}',
+                country='US',
+            )
 
     def test_returns_top_cities(self):
         res = self.auth_client.get(self.url, {'interval': 'day', 'day': '2026-05-14'})
         data = res.data['data']
-        self.assertEqual(len(data), 2)
+        self.assertGreaterEqual(len(data), 2)
         top = data[0]
         self.assertEqual(top['city'], 'Los Angeles')
-        self.assertEqual(top['visitors'], 3)
+        self.assertEqual(top['visitors'], 10)
 
     def test_empty_cities_excluded(self):
         # create event with no city
@@ -705,3 +1131,59 @@ class TopCitiesViewTests(AnalyticsTestBase):
         data = res.data['data']
         cities = [c['city'] for c in data]
         self.assertNotIn('', cities)
+
+    def test_shrunk_mode_returns_limited_data_without_meta(self):
+        res = self.auth_client.get(
+            self.url, {'interval': 'day', 'day': '2026-05-14', 'limit': 10}
+            )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('data', res.data)
+        self.assertNotIn('meta', res.data)
+        self.assertEqual(len(res.data['data']), 10)
+
+    # Paginated mode 
+    def test_paginated_first_page_returns_correct_meta(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'day', 'day': '2026-05-14', 'offset': 0, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('meta', res.data)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)          # unique pages
+        self.assertIsNone(meta['previous'])
+        self.assertIsNotNone(meta['next'])
+
+    def test_paginated_second_page_has_previous_link(self):
+        # Request second page
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'day', 'day': '2026-05-14', 'offset': 50, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        meta = res.data['meta']
+        self.assertIsNotNone(meta['previous'])
+        self.assertTrue('offset=0' in meta['previous'] or 'offset=' not in meta['previous'])
+        # Next should be None because total=60, offset=50, so only 10 remaining
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_offset_beyond_total_returns_empty_and_no_next(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'day', 'day': '2026-05-14', 'offset': 200, 'limit': 50}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 0)
+        meta = res.data['meta']
+        self.assertEqual(meta['total'], 60)
+        self.assertIsNotNone(meta['previous'])  # can go back
+        self.assertIsNone(meta['next'])
+
+    def test_paginated_custom_limit(self):
+        res = self.auth_client.get(
+            self.url,
+            {'interval': 'day', 'day': '2026-05-14', 'offset': 0, 'limit': 5},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['data']), 5)
+        self.assertEqual(res.data['meta']['limit'], 5)

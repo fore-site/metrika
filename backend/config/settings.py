@@ -114,7 +114,6 @@ CACHES = {
     }
 }
 
-# Avoid external Redis dependency during tests.
 if TESTING:
     CACHES = {
         "default": {
