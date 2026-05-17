@@ -202,7 +202,7 @@ class SummaryView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_site_summary(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_site_summary(site.id)
+            stats = StatsQueryService().get_today_site_summary(site)
         
         return api_response(status.HTTP_200_OK, data=stats)
 
@@ -330,7 +330,7 @@ class TimeseriesView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_timeseries(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_timeseries(site.id)
+            stats = StatsQueryService().get_today_timeseries(site)
 
         return api_response(status.HTTP_200_OK, data=stats)
 
@@ -428,7 +428,7 @@ class TopPagesView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_top_pages(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_top_pages(site.id)
+            stats = StatsQueryService().get_today_top_pages(site)
 
         # Extended view
         if 'offset' in request.query_params:
@@ -535,7 +535,7 @@ class TopReferrersView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_top_referrers(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_top_referrers(site.id)
+            stats = StatsQueryService().get_today_top_referrers(site)
 
         # Extended view
         if 'offset' in request.query_params:
@@ -633,7 +633,7 @@ class CountriesView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_country_breakdown(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_country_breakdown(site.id)
+            stats = StatsQueryService().get_today_country_breakdown(site)
 
         # Extended view
         if 'offset' in request.query_params:
@@ -731,7 +731,7 @@ class DevicesView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_device_breakdown(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_device_breakdown(site.id)
+            stats = StatsQueryService().get_today_device_breakdown(site)
 
         # Extended view
         if 'offset' in request.query_params:
@@ -829,7 +829,7 @@ class BrowsersView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_browser_breakdown(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_browser_breakdown(site.id)
+            stats = StatsQueryService().get_today_browser_breakdown(site)
 
 
         # Extended view
@@ -928,7 +928,7 @@ class OSView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_os_breakdown(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_os_breakdown(site.id)
+            stats = StatsQueryService().get_today_os_breakdown(site)
 
 
         # Extended view
@@ -1035,7 +1035,7 @@ class TopRegionsView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_top_regions(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_top_regions(site.id)
+            stats = StatsQueryService().get_today_top_regions(site)
 
         # Extended view
         if 'offset' in request.query_params:
@@ -1140,7 +1140,7 @@ class TopCitiesView(BaseStatsView):
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_top_cities(site.id, start_dt=end, end_dt=now)
         else:
-            stats = StatsQueryService().get_today_top_cities(site.id)
+            stats = StatsQueryService().get_today_top_cities(site)
 
         # Extended view
         if 'offset' in request.query_params:

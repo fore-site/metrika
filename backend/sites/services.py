@@ -3,10 +3,10 @@ from .models import Site
 class SiteService:
     """Public API for the sites module."""
 
-    def create_site(self, user_id: int, domain: str) -> Site:
+    def create_site(self, user_id: int, domain: str, timezone: str = 'UTC') -> Site:
         if Site.objects.filter(user_id=user_id, domain=domain).exists():
             raise ValueError('You already have a site with this domain.')
-        return Site.objects.create(user_id=user_id, domain=domain)
+        return Site.objects.create(user_id=user_id, domain=domain, timezone=timezone)
 
     def get_sites_for_user(self, user_id: int):
         return Site.objects.filter(user_id=user_id, is_active=True).order_by('-created_at')
@@ -24,7 +24,7 @@ class SiteService:
         except Site.DoesNotExist:
             return None
 
-    def update_site(self, site_id: int, user_id: int, domain=None, is_active=None) -> Site | None:
+    def update_site(self, site_id: int, user_id: int, domain=None, is_active=None, timezone=None) -> Site | None:
         site = self.get_site_by_id(site_id)
         if not site or site.user.id != user_id:
             return None
@@ -35,6 +35,8 @@ class SiteService:
             site.domain = domain
         if is_active is not None:
             site.is_active = is_active
+        if timezone is not None:
+            site.timezone = timezone
         site.save()
         return site
 

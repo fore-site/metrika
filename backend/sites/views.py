@@ -45,6 +45,7 @@ from drf_spectacular.utils import extend_schema, OpenApiExample
                         'public_id': 'uuid',
                         'domain': 'string',
                         'tracking_token': 'uuid',
+                        'timezone': 'string',
                         'is_active': 'bool',
                         'created_at': 'timestamp'
                     },
@@ -73,9 +74,10 @@ class SiteListCreateView(generics.ListCreateAPIView):
         serializer = CreateSiteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         domain = serializer.validated_data['domain']
+        timezone = serializer.validated_data.get('timezone', 'UTC')
 
         try:
-            site = SiteService().create_site(request.user.id, domain)
+            site = SiteService().create_site(request.user.id, domain, timezone)
         except ValueError as e:
             return api_response(status.HTTP_400_BAD_REQUEST, message=str(e))
 
@@ -100,6 +102,7 @@ class SiteListCreateView(generics.ListCreateAPIView):
                         'public_id': 'uuid',
                         'domain': 'string',
                         'tracking_token': 'uuid',
+                        'timezone': 'string',
                         'is_active': 'bool',
                         'created_at': 'timestamp'
                     },
@@ -111,15 +114,25 @@ class SiteListCreateView(generics.ListCreateAPIView):
 @extend_schema(
     methods=['PUT'],
     summary="Update site",
-    description="Update the domain of a site.",
+    description="Update the domain or local timezone of a site.",
     request=UpdateSiteSerializer,
     responses=SiteSerializer,
     examples=[
         OpenApiExample(
-            'Default example',
+            'Domain example',
             value={
                 'data': {
                         'domain': 'string',
+                    },
+                'message': 'This is a success response'
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Timezone example',
+            value={
+                'data': {
+                        'timezone': 'string',
                     },
                 'message': 'This is a success response'
             },
@@ -156,13 +169,15 @@ class SiteDetailView(APIView):
         self.check_object_permissions(request, instance)
         serializer = UpdateSiteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        domain = serializer.validated_data['domain']
+        domain = serializer.validated_data.get('domain')
+        timezone = serializer.validated_data.get('timezone')
 
         try:
             site = SiteService().update_site(
                 instance.id,
                 request.user.id,
                 domain=domain,
+                timezone=timezone
             )
         except ValueError as e:
             return api_response(status.HTTP_400_BAD_REQUEST, message=str(e))

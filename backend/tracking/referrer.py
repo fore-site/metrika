@@ -1,4 +1,4 @@
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 SEARCH_ENGINES = {
     # Global
@@ -70,16 +70,29 @@ SOCIAL_DOMAINS = {
 }
 
 # Parsing function
-def parse_referrer(referrer_url: str) -> tuple[str, str]:
+def parse_referrer(referrer_url: str, page_url: str = '') -> tuple[str, str]:
     """
     Return (source, medium) derived from the referrer URL.
-
+    Prioritize utm parameters if present
+    
     Medium values:
         - 'organic'  → from a known search engine
         - 'social'   → from a known social network / platform
         - 'referral' → from any other external URL
         - 'none'     → direct / no referrer (source = 'Direct')
     """
+    # Prioritize utm campaigns
+    if page_url:
+        try:
+            query = urlparse(page_url).query
+            params = parse_qs(query)
+            utm_source = params.get('utm_source', [None])[0]
+            utm_medium = params.get('utm_medium', [None])[0]
+            if utm_source and utm_medium:
+                return (utm_source, utm_medium)
+        except Exception:
+            pass
+
     if not referrer_url:
         return ('Direct', 'none')
 

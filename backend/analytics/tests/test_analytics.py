@@ -156,7 +156,7 @@ class AggregationServiceTests(AnalyticsTestBase):
             device_type='desktop', browser='Chrome', os='Windows',
         )
 
-        AggregationService().aggregate_date(self.site.id, test_date)
+        AggregationService().aggregate_date(self.site, test_date)
 
         # Check DailySiteStats
         stats = DailySiteStats.objects.get(site=self.site, date=test_date)
@@ -217,7 +217,7 @@ class StatsQueryServiceTests(AnalyticsTestBase):
             visitor_ids=['v1', 'v2', 'v1', 'v3'],
             urls=['/', '/', '/about', '/contact'],
         )
-        data = self.service.get_today_timeseries(self.site.id)
+        data = self.service.get_today_timeseries(self.site)
         # One row per hour that has at least one event.
         self.assertEqual(len(data), 4)
         self.assertTrue(all('hour' in p for p in data))

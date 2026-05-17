@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.utils.decorators import method_decorator
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import (
     TokenObtainPairView as BaseLoginView,
     TokenRefreshView as BaseRefreshView,
@@ -156,6 +157,9 @@ class VerifyEmailView(APIView):
     ]
 )
 class LoginView(BaseLoginView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
+
     serializer_class = CustomTokenObtainPairSerializer
     def post(self, request, *args, **kwargs):
         try:
@@ -341,6 +345,8 @@ class TokenVerifyView(BaseVerifyView):
     ]
 )
 class PasswordResetView(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password-reset'
     permission_classes = []
 
     def post(self, request):

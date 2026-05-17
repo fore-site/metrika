@@ -1,7 +1,8 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from django.core.management.base import BaseCommand
 from sites.services import SiteService
 from django.db import transaction
+from common.utils import get_site_timezone
 from ...services import AggregationService
 
 class Command(BaseCommand):
@@ -11,20 +12,20 @@ class Command(BaseCommand):
         parser.add_argument('--date', type=str, help='Date in YYYY-MM-DD format (default: yesterday)')
 
     def handle(self, *args, **options):
-        day = options['date']
-        if day:
-            target_date = date.fromisoformat(day)
-        else:
-            target_date = date.today() - timedelta(days=1)
+        utc_now = datetime.now(timezone.utc)
 
         active_sites = SiteService().get_all_active_sites()
 
         for site in active_sites:
-            self.stdout.write(f'Aggregating {site.domain} for {target_date}')
+            
             try:
+                tz = get_site_timezone(site)
+                local_now = utc_now.astimezone(tz)
+                local_yesterday = (local_now - timedelta(days=1)).date()
+                self.stdout.write(f'Aggregating {site.domain} for {local_yesterday}')
                 # Failed aggregation of one site triggers rollback and does not affect other sites
                 with transaction.atomic():
-                    AggregationService().aggregate_date(site.id, day=target_date)
+                    AggregationService().aggregate_date(site, day=local_yesterday)
             except Exception as e:
                 self.stderr.write(f'Aggregate failed for {site.domain}: {e}')
         self.stdout.write('Done.')

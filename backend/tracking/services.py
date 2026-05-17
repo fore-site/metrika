@@ -3,16 +3,23 @@ from .models import Event
 from .geo import geolocate
 from .referrer import parse_referrer
 from datetime import date, datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class IngestionService:
     """Handles the recording of a single pageview event."""
 
-    def record_event(self, site_id: int, payload: dict, ip_address: str = None,
-                     user_agent_str: str = None) -> Event:
+    def record_event(self, site_id: int, payload: dict, ip_address: str | None = None,
+                     user_agent_str: str | None = None) -> Event | None:
         ua = ua_parse(user_agent_str or '')
+        if ua.is_bot:
+            logger.info("Bot detected. Event not created")
+            return
+        
         location = geolocate(ip_address) if ip_address else {}
 
-        source, medium = parse_referrer(payload.get('referrer', ''))
+        source, medium = parse_referrer(payload.get('referrer', ''), payload.get('url', ''))
 
         event = Event.objects.create(
             site_id=site_id,
@@ -46,6 +53,13 @@ class EventService:
     def get_site_events(self, site_id: int, day: date):
         """Get all events for a site on a given day"""
         return Event.objects.filter(site_id=site_id, timestamp__date=day)
+
+    def get_site_events_timestamp(self, site_id, start_dt: datetime, end_dt: datetime):
+        return Event.objects.filter(
+            site_id=site_id,
+            timestamp__gte=start_dt,
+            timestamp__lt=end_dt
+        )
 
     def get_site_events_date_range(self, site_id: int, start: date, end: date):
         """Get all events for a site for a given start and end date range"""

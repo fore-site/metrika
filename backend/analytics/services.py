@@ -11,16 +11,24 @@ from .models import (
     DailyBrowserStats,
     DailyOSStats,
 )
+from sites.services import SiteService
 from tracking.services import EventService
 from tracking.models import Event
 from django.utils import timezone
 from collections import defaultdict
-from django.db.models.functions import TruncHour, TruncDate, TruncMonth, TruncYear
+from common.utils import get_local_day_utc_range, get_site_timezone
+from django.db.models.functions import TruncHour, TruncMonth, TruncYear
+from urllib.parse import urlparse, urlunparse
 
 
 class AggregationService:
     """Populate daily summary tables for a given site and date."""
 
+    def _clean_path(self, url: str):
+        """Strip query parameters from url"""
+        parsed = urlparse(url)
+        return urlunparse(parsed._replace(query=''))
+    
     def get_session_metrics(self, site_id, day: date | None = None, 
                             start_date: date | None = None, 
                             end_date: date | None = None,
@@ -109,9 +117,11 @@ class AggregationService:
             'total_pageviews_in_sessions': total_pageviews_in_sessions,
         }
 
-    def aggregate_date(self, site_id: int, day: date):
-        events = EventService().get_site_events(site_id, day)
-        session_metrics = self.get_session_metrics(site_id, day)
+    def aggregate_date(self, site, day: date):
+        start_utc, end_utc = get_local_day_utc_range(site, day)
+        events = EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
+        session_metrics = self.get_session_metrics(site.id, start_dt=start_utc, end_dt=end_utc)
+
         if not events.exists():
             return
 
@@ -122,7 +132,7 @@ class AggregationService:
                 pageviews=Count('id'),
             )
             DailySiteStats.objects.update_or_create(
-                site_id=site_id,
+                site_id=site.id,
                 date=day,
                 defaults={
                     'visitors': site_data['visitors'],
@@ -135,18 +145,23 @@ class AggregationService:
             )
 
             # Page stats
-            page_data = events.values('url').annotate(
-                visitors=Count('visitor_id', distinct=True),
-                pageviews=Count('id'),
-            )
-            for row in page_data:
+            path_pageviews = defaultdict(int)      # path -> total pageviews
+            path_visitors = defaultdict(set)       # path -> set of visitor IDs
+
+            for row in events.values('visitor_id', 'url'):
+                path = self._clean_path(row['url'])
+                path_pageviews[path] += 1
+                path_visitors[path].add(row['visitor_id'])
+
+            for path, pageviews in path_pageviews.items():
+                visitors = len(path_visitors[path])
                 DailyPageStats.objects.update_or_create(
-                    site_id=site_id,
+                    site=site,
                     date=day,
-                    url=row['url'],
+                    url=path,
                     defaults={
-                        'visitors': row['visitors'],
-                        'pageviews': row['pageviews'],
+                        'visitors': visitors,
+                        'pageviews': pageviews,
                     }
                 )
 
@@ -157,7 +172,7 @@ class AggregationService:
             )
             for row in referrer_data:
                 DailyReferrerStats.objects.update_or_create(
-                    site_id=site_id,
+                    site_id=site.id,
                     date=day,
                     source=row['source'] or 'Direct',
                     medium=row['medium'] or 'none',
@@ -174,7 +189,7 @@ class AggregationService:
             for row in country_data:
                 if row['country']:
                     DailyCountryStats.objects.update_or_create(
-                        site_id=site_id,
+                        site_id=site.id,
                         date=day,
                         country=row['country'],
                         defaults={'visitors': row['visitors']}
@@ -187,7 +202,7 @@ class AggregationService:
             for row in device_data:
                 if row['device_type']:
                     DailyDeviceStats.objects.update_or_create(
-                        site_id=site_id,
+                        site_id=site.id,
                         date=day,
                         device_type=row['device_type'],
                         defaults={'visitors': row['visitors']}
@@ -200,7 +215,7 @@ class AggregationService:
             for row in browser_data:
                 if row['browser']:
                     DailyBrowserStats.objects.update_or_create(
-                        site_id=site_id,
+                        site_id=site.id,
                         date=day,
                         browser=row['browser'],
                         defaults={'visitors': row['visitors']}
@@ -213,7 +228,7 @@ class AggregationService:
             for row in os_data:
                 if row['os']:
                     DailyOSStats.objects.update_or_create(
-                        site_id=site_id,
+                        site_id=site.id,
                         date=day,
                         os=row['os'],
                         defaults={'visitors': row['visitors']}
@@ -470,13 +485,15 @@ class StatsQueryService:
         return top_cities
 
     # Raw‑event helpers for the current (incomplete) day
-    def get_today_site_summary(self, site_id):
-        today = timezone.now().date()
-        stats = EventService().get_site_events(site_id, today).aggregate(
+    def get_today_site_summary(self, site):
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
+        stats = EventService().get_site_events_timestamp(site.id, start_utc, end_utc).aggregate(
             visitors=Count('visitor_id', distinct=True),
             pageviews=Count('id'),
         )
-        session_metrics = AggregationService().get_session_metrics(site_id, day=today)
+        session_metrics = AggregationService().get_session_metrics(site.id, day=today)
         sessions = session_metrics['total_visits']
 
         stats['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
@@ -485,10 +502,12 @@ class StatsQueryService:
 
         return stats
 
-    def get_today_timeseries(self, site_id: int):
+    def get_today_timeseries(self, site):
         """Return one row per hour for today."""
-        today = date.today()
-        data = (EventService().get_site_events(site_id, today)
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
+        data = (EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
                 .annotate(hour=TruncHour('timestamp'))
                 .values('hour')
                 .annotate(
@@ -501,7 +520,7 @@ class StatsQueryService:
         for event in data:
             start = event['hour'] 
             end = start + timedelta(hours=1)
-            session_metrics = AggregationService().get_session_metrics(site_id, start_dt=start, end_dt=end)
+            session_metrics = AggregationService().get_session_metrics(site.id, start_dt=start, end_dt=end)
             sessions = session_metrics['total_visits']
             event['total_visits'] = sessions
             event['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
@@ -510,10 +529,12 @@ class StatsQueryService:
             timeseries.append(event)
         return timeseries
 
-    def get_today_top_pages(self, site_id: int):
-        today = date.today()
+    def get_today_top_pages(self, site):
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
         return (
-            EventService().get_site_events(site_id, today)
+            EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
             .values('url')
             .annotate(
                 visitors=Count('visitor_id', distinct=True),
@@ -522,10 +543,12 @@ class StatsQueryService:
             .order_by('-pageviews')
         )
 
-    def get_today_top_referrers(self, site_id: int):
-        today = date.today()
+    def get_today_top_referrers(self, site):
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
         return (
-            EventService().get_site_events(site_id, today)
+            EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
             .values('source', 'medium')
             .annotate(
                 visitors=Count('visitor_id', distinct=True),
@@ -534,47 +557,59 @@ class StatsQueryService:
             .order_by('-pageviews')
         )
 
-    def get_today_country_breakdown(self, site_id: int):
-        today = date.today()
+    def get_today_country_breakdown(self, site):
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
         return (
-            EventService().get_site_events(site_id, today)
+            EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
             .values('country')
             .annotate(visitors=Count('visitor_id', distinct=True))
             .order_by('-visitors')
         )
 
-    def get_today_device_breakdown(self, site_id: int):
-        today = date.today()
-        return (EventService().get_site_events(site_id, today)
+    def get_today_device_breakdown(self, site):
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
+        return (EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
                 .values('device_type')
                 .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
 
-    def get_today_browser_breakdown(self, site_id: int):
-        today = date.today()
-        return (EventService().get_site_events(site_id, today)
+    def get_today_browser_breakdown(self, site):
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
+        return (EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
                 .values('browser')
                 .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
 
-    def get_today_os_breakdown(self, site_id: int):
-        today = date.today()
-        return (EventService().get_site_events(site_id, today)
+    def get_today_os_breakdown(self, site):
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
+        return (EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
                 .values('os')
                 .annotate(visitors=Count('visitor_id', distinct=True))
                 .order_by('-visitors'))
     
-    def get_today_top_regions(self, site_id):
-        today = date.today()
-        event = EventService().get_site_events(site_id, today)
+    def get_today_top_regions(self, site):
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
+        event = EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
         
         top_regions = self._top_regions(event)
         return top_regions
 
 
-    def get_today_top_cities(self, site_id):
-        today = date.today()
-        event = EventService().get_site_events(site_id, today)
+    def get_today_top_cities(self, site):
+        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+
+        event = EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
         
         top_cities = self._top_cities(event)
         return top_cities

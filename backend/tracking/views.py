@@ -1,5 +1,6 @@
 from rest_framework import status
 from rest_framework.views import APIView
+from rest_framework.throttling import ScopedRateThrottle
 from common.response import api_response
 from sites.services import SiteService
 from .services import IngestionService
@@ -26,6 +27,9 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParamet
     )},
 )
 class EventView(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'tracking'
+    
     permission_classes = []
     authentication_classes = []
 
