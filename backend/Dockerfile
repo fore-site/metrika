@@ -33,8 +33,8 @@ RUN if [ -z "$GEOIPUPDATE_ACCOUNT_ID" ] || [ -z "$GEOIPUPDATE_LICENSE_KEY" ]; th
     fi && \
     echo "Running geoipupdate with verbose output..." && \
     /usr/bin/geoipupdate -v 2>&1 || echo "geoipupdate exited with code $?" && \
-    ls -la /usr/share/GeoIP/ 2>/dev/null || echo "GeoIP directory does not exist" && \
-    test -f /usr/share/GeoIP/GeoLite2-City.mmdb || \
+    ls -la /usr/local/share/GeoIP/ 2>/dev/null || echo "GeoIP directory does not exist" && \
+    test -f /usr/local/share/GeoIP/GeoLite2-City.mmdb || \
     (echo "ERROR: GeoIP database download failed. Check credentials and ensure GeoLite2-City edition is enabled on your MaxMind account."; exit 1)
 
 # Stage 3: Final application image
