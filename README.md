@@ -72,6 +72,7 @@ The app is then available at `http://localhost:8000` and the Swagger docs at `/a
 - `POST /api/auth/register/` — sign up and trigger email verification
 - `POST /api/events/` — ingest tracking payloads with `X-Tracking-Token`
 - `GET /api/stats/<site_id>/summary/` — site analytics summary
+- `GET /metrics/dashboard` — Human readable prometheus metrics
 
 ## Roadmap
 
