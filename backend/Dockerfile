@@ -27,7 +27,9 @@ ENV GEOIPUPDATE_ACCOUNT_ID=${MAXMIND_ACCOUNT_ID} \
     GEOIPUPDATE_EDITION_IDS="GeoLite2-City" \
     GEOIPUPDATE_FREQUENCY=0
 
-RUN /usr/bin/geoipupdate
+RUN /usr/bin/geoipupdate && \
+    test -f /usr/share/GeoIP/GeoLite2-City.mmdb || \
+    (echo "ERROR: GeoIP database download failed. Verify MAXMIND_ACCOUNT_ID and MAXMIND_LICENSE_KEY are set correctly in Railway shared variables." && exit 1)
 
 # Stage 3: Final application image
 
