@@ -51,7 +51,7 @@ COPY backend/ ./
 
 # Create directory for GeoIP database and copy from geoip stage
 RUN mkdir -p /app/geoip
-COPY --from=geoip /usr/share/GeoIP/GeoLite2-City.mmdb /app/geoip/
+COPY --from=geoip /usr/local/share/GeoIP/GeoLite2-City.mmdb /app/geoip/
 
 # Set up non‑root user and fix ownership
 RUN adduser --disabled-password --gecos '' appuser \
