@@ -4,7 +4,7 @@ from decouple import config
 from datetime import timedelta
 import sys
 import dj_database_url
-
+import os
 
 # True when running the Django test runner (e.g. `manage.py test`).
 TESTING = 'test' in sys.argv
@@ -124,7 +124,7 @@ DATABASES = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": config("REDIS_URI"),
+        "LOCATION": config("REDIS_URL"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -190,7 +190,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = [FRONTEND_BASE_URL]
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
 
 REFRESH_TOKEN_COOKIE_NAME = 'refresh_token'
 REFRESH_TOKEN_COOKIE_HTTPONLY = True
@@ -203,6 +203,7 @@ SESSION_COOKIE_SAMESITE = 'Strict' if not DEBUG else 'Lax'
 SESSION_COOKIE_MAX_AGE = int(timedelta(hours=1).total_seconds())
 
 CORS_ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+CORS_ALLOWED_ORIGINS = [FRONTEND_BASE_URL]
 CORS_ALLOWED_HEADERS = 'Authorization, Content-Type, X-CSRFToken, X-Correlation-ID, X-Tracking-Token'
 CORS_MAX_AGE = 86400
 
@@ -289,10 +290,6 @@ RQ_QUEUES = {
         'REDIS_CLIENT_KWARGS': {    # Eventual additional Redis connection arguments
             'ssl_cert_reqs': None,
         },
-    },
-    'high': {
-        'URL': config('REDISTOGO_URL', 'redis://localhost:6379/1'),  # If you're on Heroku
-        'DEFAULT_TIMEOUT': 500,
     },
 }
 
