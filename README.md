@@ -19,21 +19,20 @@ A Django analytics backend built for tracking website events, aggregating visito
 - `email_service/` — email sending, retry handling, and verification workflows
 - `common/` — shared middleware, response format, validators, and utilities
 
-graph TD
-%% ---- Clients ----
-USER[👤 Dashboard User]
-VISITOR[🌐 Site Visitor]
-BOT[🤖 Bot / Crawler]
+## Architecture
 
-    %% ---- Frontend ----
+```mermaid
+graph TD
+    USER[👤 Dashboard User]
+    VISITOR[🌐 Site Visitor]
+    BOT[🤖 Bot / Crawler]
+
     NEXT[Next.js Frontend<br/>SPA + SSR]
     TRACKER[tracker.js<br/>JavaScript Snippet]
 
-    %% ---- API Gateway & Middleware ----
-    NGINX[Nginx / Reverse Proxy] (commercial use only)
+    NGINX[Nginx / Reverse Proxy]
     MIDDLEWARE[CORS · CSRF · Rate Limiting · JSON Envelope]
 
-    %% ---- Django Modular Monolith ----
     subgraph DJANGO[Django Modular Monolith]
         ACCOUNTS[accounts<br/>Auth & Identity]
         SITES[sites<br/>Site Management]
@@ -43,33 +42,27 @@ BOT[🤖 Bot / Crawler]
         COMMON[common<br/>Utilities & Cross-cutting]
     end
 
-    %% ---- Data Stores ----
-    DB[(Database<br/>SQLite)]
+    DB[(Database<br/>SQLite / PostgreSQL)]
     REDIS[(Redis<br/>Cache · RQ Queue)]
     STATIC[Static Files<br/>tracker.js · Swagger UI]
 
-    %% ---- Background Jobs ----
     WORKER[RQ Worker<br/>Email Sending]
     AGGREGATION_CRON[Cron / RQ Scheduler<br/>Daily Aggregation]
 
-    %% ---- Dashboard Flow ----
     USER -->|Login / View Stats| NEXT
     NEXT -->|REST API| NGINX
     NGINX --> DJANGO
 
-    %% ---- Tracking Flow ----
     VISITOR -->|Loads page| TRACKER
     TRACKER -->|POST /api/event<br/>X-Tracking-Token| NGINX
     BOT -->|Blocked by rate limit & bot filter| TRACKER
     NGINX --> DJANGO
 
-    %% ---- Internal Module Communication ----
     ACCOUNTS -->|Service boundary| SITES
     SITES -->|get_site_by_token()| TRACKING_MOD
     TRACKING_MOD -->|Raw events| ANALYTICS
     ANALYTICS -->|Queries| SITES
 
-    %% ---- Infrastructure Dependencies ----
     ACCOUNTS --> DB
     SITES --> DB
     TRACKING_MOD --> DB
@@ -78,10 +71,10 @@ BOT[🤖 Bot / Crawler]
     EMAIL_SVC --> WORKER
     AGGREGATION_CRON --> ANALYTICS
 
-    %% ---- Static & Docs ----
     DJANGO --> STATIC
     NGINX --> STATIC
     NEXT -->|Serves snippet| STATIC
+```
 
 - Nginx is only added for future implementation. For now, the roadmap only involves building the next frontend
 
