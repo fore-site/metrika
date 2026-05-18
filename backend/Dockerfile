@@ -27,7 +27,15 @@ ENV GEOIPUPDATE_ACCOUNT_ID=${MAXMIND_ACCOUNT_ID} \
     GEOIPUPDATE_FREQUENCY=0
 
 # Validate credentials are set and download database with error checking
-RUN sh -c 'if [ -z "$GEOIPUPDATE_ACCOUNT_ID" ] || [ -z "$GEOIPUPDATE_LICENSE_KEY" ]; then echo "ERROR: MaxMind credentials not set"; exit 1; fi && /usr/bin/geoipupdate && test -f /usr/share/GeoIP/GeoLite2-City.mmdb || (echo "ERROR: GeoIP database download failed"; exit 1)'
+RUN if [ -z "$GEOIPUPDATE_ACCOUNT_ID" ] || [ -z "$GEOIPUPDATE_LICENSE_KEY" ]; then \
+    echo "ERROR: MAXMIND_ACCOUNT_ID or MAXMIND_LICENSE_KEY not set"; \
+    exit 1; \
+    fi && \
+    echo "Running geoipupdate with verbose output..." && \
+    /usr/bin/geoipupdate -v 2>&1 || echo "geoipupdate exited with code $?" && \
+    ls -la /usr/share/GeoIP/ 2>/dev/null || echo "GeoIP directory does not exist" && \
+    test -f /usr/share/GeoIP/GeoLite2-City.mmdb || \
+    (echo "ERROR: GeoIP database download failed. Check credentials and ensure GeoLite2-City edition is enabled on your MaxMind account."; exit 1)
 
 # Stage 3: Final application image
 
