@@ -1,0 +1,15 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile"
+
+[[services]]
+name = "web"
+startCommand = "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
+
+[[services]]
+name = "worker"
+startCommand = "python manage.py rqworker"
+
+[[services]]
+name = "scheduler"
+startCommand = "python manage.py run_scheduler"
