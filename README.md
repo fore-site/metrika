@@ -1,6 +1,6 @@
 # Metrika
 
-A production-style Django analytics backend built for tracking website events, aggregating visitor data, and exposing RESTful reporting endpoints.
+A Django analytics backend built for tracking website events, aggregating visitor data, and exposing RESTful reporting endpoints.
 
 ## Highlights
 
