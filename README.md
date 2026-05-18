@@ -21,7 +21,7 @@ A Django analytics backend built for tracking website events, aggregating visito
 
 ## Architecture Diagram
 
-![Metrika Architecture](docs/architecture.png)
+![Metrika Architecture](backend/docs/architecture.png)
 
 - Nginx is only added for future implementation. For now, the roadmap only involves building the next frontend
 
