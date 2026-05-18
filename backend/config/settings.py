@@ -114,8 +114,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 AUTHENTICATION_BACKENDS = ['accounts.backends.CustomModelBackend']
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:///db.sqlite3',   
+    'default': dj_database_url.config(   
         conn_max_age=600,                 # persistent connections (0 for dev)
         ssl_require=True,
     )
