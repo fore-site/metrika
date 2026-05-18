@@ -87,6 +87,7 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API documentation for Metrika analytics platform',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'SERVE_PUBLIC': True,
 }
 
 ROOT_URLCONF = 'config.urls'
