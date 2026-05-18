@@ -19,10 +19,6 @@ A Django analytics backend built for tracking website events, aggregating visito
 - `email_service/` — email sending, retry handling, and verification workflows
 - `common/` — shared middleware, response format, validators, and utilities
 
-## Architecture
-
-## Architecture
-
 ```mermaid
 graph TD
     USER[👤 Dashboard User]
@@ -44,7 +40,7 @@ graph TD
         COMMON[common<br/>Utilities & Cross-cutting]
     end
 
-    DB[(Database<br/>SQLite / PostgreSQL)]
+    DB[(Database<br/>SQLite)]
     REDIS[(Redis<br/>Cache · RQ Queue)]
     STATIC[Static Files<br/>tracker.js · Swagger UI]
 

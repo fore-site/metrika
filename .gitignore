@@ -8,3 +8,4 @@ __pycache__/
 */**/GeoLite2-City.mmdb
 *.sqlite3
 .vscode/
+DECISIONS.md
