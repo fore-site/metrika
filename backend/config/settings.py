@@ -17,7 +17,7 @@ SECRET_KEY = config('DJANGO_SECRET_KEY')
 
 DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1']
+ALLOWED_HOSTS = ['metrika-api.up.railway.app']
 
 
 # Application definition
