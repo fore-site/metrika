@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 class Event(models.Model):
     site = models.ForeignKey(
@@ -6,7 +7,7 @@ class Event(models.Model):
         on_delete=models.CASCADE,
         related_name='events',
     )
-    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
     visitor_id = models.CharField(max_length=64)
     
     url = models.URLField(max_length=2048)
