@@ -14,21 +14,27 @@ COPY backend/requirements.txt ./
 RUN python -m pip install --upgrade pip \
     && pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-# Stage 2: Download GeoLite2 City via wget (License Key only)
+# Stage 2: GeoIP database download (init container)
 
-FROM python:3.12-slim AS geoip
+FROM ghcr.io/maxmind/geoipupdate:latest AS geoip
 
+ARG MAXMIND_ACCOUNT_ID
 ARG MAXMIND_LICENSE_KEY
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends wget tar \
-    && mkdir -p /app/geoip \
-    && wget -q "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" \
-    -O /tmp/GeoLite2-City.tar.gz \
-    && tar -xzf /tmp/GeoLite2-City.tar.gz -C /tmp \
-    && mv /tmp/GeoLite2-City_*/GeoLite2-City.mmdb /app/geoip/ \
-    && rm -rf /tmp/GeoLite2-City* \
-    && apt-get purge -y wget tar && apt-get autoremove -y
+ENV GEOIPUPDATE_ACCOUNT_ID=${MAXMIND_ACCOUNT_ID} \
+    GEOIPUPDATE_LICENSE_KEY=${MAXMIND_LICENSE_KEY} \
+    GEOIPUPDATE_EDITION_IDS="GeoLite2-City" \
+    GEOIPUPDATE_FREQUENCY=0
+
+# Validate credentials are set and download database with error checking
+RUN if [ -z "$GEOIPUPDATE_ACCOUNT_ID" ] || [ -z "$GEOIPUPDATE_LICENSE_KEY" ]; then \
+    echo "ERROR: MAXMIND_ACCOUNT_ID or MAXMIND_LICENSE_KEY not set"; \
+    exit 1; \
+    fi && \
+    /usr/bin/geoipupdate && \
+    test -f /usr/share/GeoIP/GeoLite2-City.mmdb || \
+    (echo "ERROR: GeoIP database download failed after geoipupdate ran"; exit 1)
+
 # Stage 3: Final application image
 
 FROM python:3.12-slim
@@ -41,8 +47,10 @@ COPY --from=builder /install /usr/local
 # Copy backend code
 COPY backend/ ./
 
-# copy from geoip stage
-COPY --from=geoip /app/geoip/GeoLite2-City.mmdb /app/geoip/
+# Create directory for GeoIP database and copy from geoip stage
+RUN mkdir -p /app/geoip
+COPY --from=geoip /usr/share/GeoIP/GeoLite2-City.mmdb /app/geoip/ || \
+    (echo "ERROR: Failed to copy GeoLite2-City.mmdb from build stage. Verify MaxMind credentials."; exit 1)
 
 # Set up non‑root user and fix ownership
 RUN adduser --disabled-password --gecos '' appuser \
