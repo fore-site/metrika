@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="60">
+    <title>Metrika Metrics Dashboard</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 2rem; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+        th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f5f5f5; }
+        .metric-name { font-family: monospace; }
+        .badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.8rem; }
+        .counter { background: #c6f6d5; color: #22543d; }
+        .histogram { background: #bee3f8; color: #2a4365; }
+        .gauge { background: #fefcbf; color: #744210; }
+    </style>
+</head>
+<body>
+    <h1>📊 Metrika Metrics Dashboard</h1>
+    <p>Total metric samples: <strong>{{ count }}</strong></p>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Labels</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in metrics %}
+            <tr>
+                <td class="metric-name" title="{{ m.help }}">{{ m.name }}</td>
+                <td><span class="badge {{ m.type }}">{{ m.type }}</span></td>
+                <td>
+                    {% for k, v in m.labels.items %}
+                        {{ k }}={{ v }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td>{{ m.value }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
