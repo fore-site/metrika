@@ -16,65 +16,12 @@ A Django analytics backend built for tracking website events, aggregating visito
 - `sites/` — site management, tracking tokens, timezone and public ID support
 - `tracking/` — event ingestion, request context extraction, spam/bot filtering
 - `analytics/` — timezone-aware stats aggregation, sessions (bounce rate, views per visit, duration), pagination, and query sanitization
-- `email_service/` — email sending, retry handling, and verification workflows
+- `email_service/` — email sending via smtp with brevo free tier (gmail smtp auto marks as spam), retry handling, and verification workflows
 - `common/` — shared middleware, response format, validators, and utilities
 
 ## Architecture Diagram
 
-```mermaid
-graph TD
-    USER[👤 Dashboard User]
-    VISITOR[🌐 Site Visitor]
-    BOT[🤖 Bot / Crawler]
-
-    NEXT[Next.js Frontend<br/>SPA + SSR]
-    TRACKER[tracker.js<br/>JavaScript Snippet]
-
-    NGINX[Nginx / Reverse Proxy]
-    MIDDLEWARE[CORS · CSRF · Rate Limiting · JSON Envelope]
-
-    subgraph DJANGO[Django Modular Monolith]
-        ACCOUNTS[accounts<br/>Auth & Identity]
-        SITES[sites<br/>Site Management]
-        TRACKING_MOD[tracking<br/>Event Ingestion]
-        ANALYTICS[analytics<br/>Aggregation & Stats]
-        EMAIL_SVC[email_service<br/>Async Emails]
-        COMMON[common<br/>Utilities & Cross-cutting]
-    end
-
-    DB[(Database<br/>SQLite)]
-    REDIS[(Redis<br/>Cache · RQ Queue)]
-    STATIC[Static Files<br/>tracker.js · Swagger UI]
-
-    WORKER[RQ Worker<br/>Email Sending]
-    AGGREGATION_CRON["Cron / RQ Scheduler<br/>Daily Aggregation"]
-
-    USER -->|Login / View Stats| NEXT
-    NEXT -->|REST API| NGINX
-    NGINX --> DJANGO
-
-    VISITOR -->|Loads page| TRACKER
-    TRACKER -->|"POST /api/event<br/>X-Tracking-Token"| NGINX
-    BOT -->|Blocked by rate limit & bot filter| TRACKER
-    NGINX --> DJANGO
-
-    ACCOUNTS -->|Service boundary| SITES
-    SITES -->|"get_site_by_token()"| TRACKING_MOD
-    TRACKING_MOD -->|Raw events| ANALYTICS
-    ANALYTICS -->|Queries| SITES
-
-    ACCOUNTS --> DB
-    SITES --> DB
-    TRACKING_MOD --> DB
-    ANALYTICS --> DB
-    EMAIL_SVC --> REDIS
-    EMAIL_SVC --> WORKER
-    AGGREGATION_CRON --> ANALYTICS
-
-    DJANGO --> STATIC
-    NGINX --> STATIC
-    NEXT -->|Serves snippet| STATIC
-```
+![Metrika Architecture](docs/architecture.png)
 
 - Nginx is only added for future implementation. For now, the roadmap only involves building the next frontend
 
