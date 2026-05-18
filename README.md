@@ -19,6 +19,8 @@ A Django analytics backend built for tracking website events, aggregating visito
 - `email_service/` — email sending, retry handling, and verification workflows
 - `common/` — shared middleware, response format, validators, and utilities
 
+## Architecture Diagram
+
 ```mermaid
 graph TD
     USER[👤 Dashboard User]
