@@ -21,6 +21,8 @@ A Django analytics backend built for tracking website events, aggregating visito
 
 ## Architecture
 
+## Architecture
+
 ```mermaid
 graph TD
     USER[👤 Dashboard User]
@@ -47,19 +49,19 @@ graph TD
     STATIC[Static Files<br/>tracker.js · Swagger UI]
 
     WORKER[RQ Worker<br/>Email Sending]
-    AGGREGATION_CRON[Cron / RQ Scheduler<br/>Daily Aggregation]
+    AGGREGATION_CRON["Cron / RQ Scheduler<br/>Daily Aggregation"]
 
     USER -->|Login / View Stats| NEXT
     NEXT -->|REST API| NGINX
     NGINX --> DJANGO
 
     VISITOR -->|Loads page| TRACKER
-    TRACKER -->|POST /api/event<br/>X-Tracking-Token| NGINX
+    TRACKER -->|"POST /api/event<br/>X-Tracking-Token"| NGINX
     BOT -->|Blocked by rate limit & bot filter| TRACKER
     NGINX --> DJANGO
 
     ACCOUNTS -->|Service boundary| SITES
-    SITES -->|get_site_by_token()| TRACKING_MOD
+    SITES -->|"get_site_by_token()"| TRACKING_MOD
     TRACKING_MOD -->|Raw events| ANALYTICS
     ANALYTICS -->|Queries| SITES
 
