@@ -5,28 +5,28 @@ from .models import Site
 from .services import SiteService
 from .serializers import CreateSiteSerializer, UpdateSiteSerializer, SiteSerializer
 from .permissions import IsSiteOwner
-from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
 
 @extend_schema(
     methods=['GET'],
     summary="List sites",
     description="Get a list of a user's active sites.",
     request=None,
-    responses=SiteSerializer,
+    responses=OpenApiResponse(response=SiteSerializer(many=True)),
     examples=[
         OpenApiExample(
             'Default example',
             value={
                 'data': [
                     {
-                        'public_id': 'uuid',
-                        'domain': 'string',
-                        'tracking_token': 'uuid',
-                        'is_active': 'bool',
-                        'created_at': 'timestamp'
+                        'public_id': '4f8d22c0-9af2-4b1e-8e7d-a8fbbd3e45a8',
+                        'domain': 'example.com',
+                        'tracking_token': '27b9d6e1-9d39-4f8a-99c2-fb6c4ea4e7df',
+                        'is_active': True,
+                        'created_at': '2026-05-17T12:34:56Z'
                     }
                 ],
-                'message': 'This is a success response'
+                'message': 'Sites retrieved successfully.'
             }
         )
     ]
@@ -42,14 +42,14 @@ from drf_spectacular.utils import extend_schema, OpenApiExample
             'Default example',
             value={
                 'data': {
-                        'public_id': 'uuid',
-                        'domain': 'string',
-                        'tracking_token': 'uuid',
-                        'timezone': 'string',
-                        'is_active': 'bool',
-                        'created_at': 'timestamp'
+                        'public_id': '4f8d22c0-9af2-4b1e-8e7d-a8fbbd3e45a8',
+                        'domain': 'example.com',
+                        'tracking_token': '27b9d6e1-9d39-4f8a-99c2-fb6c4ea4e7df',
+                        'timezone': 'UTC',
+                        'is_active': True,
+                        'created_at': '2026-05-17T12:34:56Z'
                     },
-                'message': 'This is a success response'
+                'message': 'Site created successfully.'
             },
             response_only=True
         )
@@ -99,14 +99,14 @@ class SiteListCreateView(generics.ListCreateAPIView):
             'Default example',
             value={
                 'data': {
-                        'public_id': 'uuid',
-                        'domain': 'string',
-                        'tracking_token': 'uuid',
-                        'timezone': 'string',
-                        'is_active': 'bool',
-                        'created_at': 'timestamp'
+                        'public_id': '4f8d22c0-9af2-4b1e-8e7d-a8fbbd3e45a8',
+                        'domain': 'example.com',
+                        'tracking_token': '27b9d6e1-9d39-4f8a-99c2-fb6c4ea4e7df',
+                        'timezone': 'UTC',
+                        'is_active': True,
+                        'created_at': '2026-05-17T12:34:56Z'
                     },
-                'message': 'This is a success response'
+                'message': 'Site retrieved successfully.'
             }
         )
     ]
@@ -122,9 +122,9 @@ class SiteListCreateView(generics.ListCreateAPIView):
             'Domain example',
             value={
                 'data': {
-                        'domain': 'string',
+                        'domain': 'example.org',
                     },
-                'message': 'This is a success response'
+                'message': 'Site domain updated successfully.'
             },
             response_only=True
         ),
@@ -132,9 +132,9 @@ class SiteListCreateView(generics.ListCreateAPIView):
             'Timezone example',
             value={
                 'data': {
-                        'timezone': 'string',
+                        'timezone': 'America/New_York',
                     },
-                'message': 'This is a success response'
+                'message': 'Site timezone updated successfully.'
             },
             response_only=True
         )

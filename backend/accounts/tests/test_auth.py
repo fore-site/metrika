@@ -1,13 +1,49 @@
+from collections import defaultdict
+from copy import deepcopy
+
 from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
+from django.conf import settings
 from rest_framework import status
 from rest_framework.test import APIClient
+from rest_framework.settings import api_settings
+from rest_framework.throttling import ScopedRateThrottle
 
 from ..models import User
 from ..services import AccountService
 
 class AuthTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._old_rest_framework = deepcopy(getattr(settings, 'REST_FRAMEWORK', {}))
+        cls._old_scoped_throttle_rates = ScopedRateThrottle.THROTTLE_RATES
+
+        settings.REST_FRAMEWORK = {
+            **cls._old_rest_framework,
+            'DEFAULT_THROTTLE_CLASSES': [],
+            'DEFAULT_THROTTLE_RATES': {
+                'anon': None,
+                'user': None,
+                'login': None,
+                'password-reset': None,
+                'tracking': None,
+            }
+        }
+        api_settings.reload()
+        ScopedRateThrottle.THROTTLE_RATES = defaultdict(
+            lambda: None,
+            settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        ScopedRateThrottle.THROTTLE_RATES = cls._old_scoped_throttle_rates
+        settings.REST_FRAMEWORK = cls._old_rest_framework
+        api_settings.reload()
+        super().tearDownClass()
+
     def setUp(self):
         self.client = APIClient()
         self.register_url = reverse('register')
@@ -61,13 +97,13 @@ class AuthTests(TestCase):
         user = AccountService().get_user_by_email(self.valid_email)
         self.assertTrue(user.is_active)
 
-
     def login_user(self, email=None, password=None, expected_status=status.HTTP_200_OK):
         """Login and return tokens."""
         data = {
             'email': email or self.valid_email,
             'password': password or self.valid_password,
         }
+
         response = self.client.post(self.login_url, data, format='json')
         self.assertEqual(response.status_code, expected_status)
         return response

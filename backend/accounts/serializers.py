@@ -134,3 +134,13 @@ class ConfirmEmailChangeSerializer(serializers.Serializer):
 
 class DeleteAccountSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
+
+
+class EmptyResponseSerializer(serializers.Serializer):
+    data = serializers.DictField(child=serializers.CharField(), required=False)
+    message = serializers.CharField()
+
+
+class AccessTokenResponseSerializer(serializers.Serializer):
+    data = TokenObtainPairResponseSerializer()
+    message = serializers.CharField()

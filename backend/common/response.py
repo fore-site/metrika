@@ -14,7 +14,6 @@ def api_response(status_code: int, data=None, message: str = '', errors=None, me
     else:
         body['errors'] = errors or []
 
-
     return Response(body, status=status_code)
 
 def default_message(status_code: int) -> str:

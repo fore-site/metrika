@@ -7,13 +7,14 @@ from .services import IngestionService
 from .serializers import EventPayloadSerializer
 from common.utils import get_client_ip, get_user_agent
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 @extend_schema(
     summary="Send event payload",
     parameters=[
         OpenApiParameter(
             name='X-Tracking-Token',
-            type=str,
+            type=OpenApiTypes.STR,
             location=OpenApiParameter.HEADER,
             description="The tracking token of a user's site.",
             required=True,
@@ -21,10 +22,18 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParamet
     ],
     description="Send event payload for each page view along with X-Tracking-Token header",
     request=EventPayloadSerializer,
-    responses={status.HTTP_204_NO_CONTENT: OpenApiResponse(
-        description='Event recorded successfully',
-        response=None
-    )},
+    responses={
+        status.HTTP_204_NO_CONTENT: OpenApiResponse(
+            description='Event recorded successfully',
+            response=None
+        ),
+        status.HTTP_401_UNAUTHORIZED: OpenApiResponse(
+            description='Missing or invalid tracking token.'
+        ),
+        status.HTTP_429_TOO_MANY_REQUESTS: OpenApiResponse(
+            description='Rate limit exceeded.'
+        ),
+    },
 )
 class EventView(APIView):
     throttle_classes = [ScopedRateThrottle]

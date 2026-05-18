@@ -1,4 +1,5 @@
 from rest_framework.views import exception_handler
+from rest_framework.exceptions import Throttled
 from .response import api_response
 import logging
 
@@ -6,6 +7,18 @@ logger = logging.getLogger(__name__)
 
 def custom_exception_handler(exc, context):
     # Get a standard error response
+    if isinstance(exc, Throttled):
+        return api_response(
+            status_code=429,
+            message=str(exc.detail),
+            errors=[
+                {'code': 'throttled',
+                 'detail': str(exc.detail),
+                 'pointer': ''
+                }
+            ]
+        )
+
     response = exception_handler(exc, context)
     logger.error(f"Error encountered: {exc}, {context}")
 

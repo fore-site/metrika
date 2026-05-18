@@ -312,10 +312,12 @@ class StatsQueryService:
         timeseries = []
         for event in data:
             sessions = event['total_visits']
+            event['day'] = event['date']
             event['bounce_rate'] = round(event['single_page_sessions'] / sessions * 100) if sessions else 0
             event['avg_duration_seconds'] = round(event['total_duration_seconds'] / sessions) if sessions else 0
             event['views_per_visit'] = round(event['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
             
+            del event['date']
             del event['single_page_sessions']
             del event['total_duration_seconds']
             del event['total_pageviews_in_sessions']
@@ -493,7 +495,7 @@ class StatsQueryService:
             visitors=Count('visitor_id', distinct=True),
             pageviews=Count('id'),
         )
-        session_metrics = AggregationService().get_session_metrics(site.id, day=today)
+        session_metrics = AggregationService().get_session_metrics(site.id, start_dt=start_utc, end_dt=end_utc)
         sessions = session_metrics['total_visits']
 
         stats['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0

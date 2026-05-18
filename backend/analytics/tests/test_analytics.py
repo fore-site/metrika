@@ -19,6 +19,9 @@ from analytics.models import (
     DailyOSStats
     )
 from analytics.services import AggregationService, StatsQueryService
+import logging
+
+logger = logging.getLogger(__name__)
 
 TODAY = date(2026, 5, 15)
 NOW = datetime(2026, 5, 15, 12, 0, 0, tzinfo=timezone.utc)
@@ -191,7 +194,7 @@ class StatsQueryServiceTests(AnalyticsTestBase):
         )
         self.assertEqual(len(data), 5)   # 5 days
         for point in data:
-            self.assertIn('date', point)
+            self.assertIn('day', point)
             self.assertIn('visitors', point)
             self.assertIn('pageviews', point)
             self.assertIn('bounce_rate', point)
@@ -399,7 +402,7 @@ class TimeseriesAPITests(AnalyticsTestBase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = res.data['data']
         self.assertEqual(len(data), 3)   # 11,12,13
-        dates = [p['date'].isoformat() if hasattr(p['date'], 'isoformat') else p['date'] for p in data]
+        dates = [p['day'].isoformat() if hasattr(p['day'], 'isoformat') else p['day'] for p in data]
         self.assertEqual(dates, ['2026-05-11', '2026-05-12', '2026-05-13'])
 
     def test_invalid_interval_returns_400(self):

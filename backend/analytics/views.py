@@ -8,11 +8,45 @@ from .services import StatsQueryService
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
+from .serializers import (
+    SummaryResponseSerializer,
+    TimeseriesResponseSerializer,
+    TopPagesResponseSerializer,
+    TopReferrersResponseSerializer,
+    CountriesResponseSerializer,
+    DevicesResponseSerializer,
+    BrowsersResponseSerializer,
+    OSResponseSerializer,
+    TopRegionsResponseSerializer,
+    TopCitiesResponseSerializer,
+)
 from django.utils import timezone
 import logging
 from rest_framework.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
+
+PAGINATION_QUERY_PARAMETERS = [
+    OpenApiParameter(
+        name='offset',
+        type=OpenApiTypes.INT,
+        location=OpenApiParameter.QUERY,
+        description="Zero-based offset into the result set. When provided, the endpoint returns a paginated response.",
+        required=False,
+    ),
+    OpenApiParameter(
+        name='limit',
+        type=OpenApiTypes.INT,
+        location=OpenApiParameter.QUERY,
+        description="Maximum number of items to return. Default is 10 for dashboard previews and page size is capped by the backend.",
+        required=False,
+    ),
+]
+
+AUTH_RESPONSES = {
+    status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description='Authentication credentials were not provided.'),
+    status.HTTP_403_FORBIDDEN: OpenApiResponse(description='You do not have permission to perform this action.'),
+}
 
 class BaseStatsView(APIView):
     """
@@ -94,24 +128,6 @@ class BaseStatsView(APIView):
         else:
             return 'year'
 
-    def get_pagination_params(self):
-        """
-        Returns (offset, limit) from query parameters.
-        Defaults: offset=0, limit=50, max limit=200.
-        """
-        try:
-            offset = int(self.request.query_params.get('offset', 0))
-            offset = max(0, offset)
-        except (ValueError, TypeError):
-            offset = 0
-
-        try:
-            limit = int(self.request.query_params.get('limit', 50))
-            limit = max(1, min(limit, 200))
-        except (ValueError, TypeError):
-            limit = 50
-
-        return offset, limit
 
 # Aggregated endpoints
 
@@ -160,25 +176,23 @@ class BaseStatsView(APIView):
     Set interval as 24h to fetch stats for the past 24 hours.
     No query params defaults to today's stats.
     Get summary stats.""",
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=SummaryResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
             'Default example',
             value={
                 'data': {
-                    'visitors': 'string',
-                    'pageviews': 'string',
-                    'total_visits': 'string',
-                    'bounce_rate': 'string',
-                    'avg_duration_seconds': 'string',
-                    'views_per_visit': 'string'
+                    'visitors': 124,
+                    'pageviews': 420,
+                    'total_visits': 98,
+                    'bounce_rate': 52.3,
+                    'avg_duration_seconds': 174.6,
+                    'views_per_visit': 4.29
                 },
-                'message': 'This is a success response'
+                'message': 'Summary stats retrieved successfully.'
             },
             response_only=True
         )
@@ -252,46 +266,92 @@ class SummaryView(BaseStatsView):
     No query params defaults to today's stats.
     Get timeseries stats for visualization (graph plotting, etc).
 """,
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=TimeseriesResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
-            'Hour timeseries example',
+            'Hour precision example',
             value={
                 'data': [
                     {
-                    'hour': 'string',
-                    'visitors': 'string',
-                    'pageviews': 'string',
-                    'total_visits': 'string',
-                    'bounce_rate': 'string',
-                    'avg_duration_seconds': 'string',
-                    'views_per_visit': 'string'
-                }
+                        'hour': '2026-05-17T12:00:00Z',
+                        'visitors': 28,
+                        'pageviews': 112,
+                        'total_visits': 26,
+                        'bounce_rate': 48.1,
+                        'avg_duration_seconds': 212.4,
+                        'views_per_visit': 4.31
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Timeseries stats retrieved successfully.',
+                'meta': {
+                    'precision': 'hour'
+                }
             },
             response_only=True
         ),
         OpenApiExample(
-            'Date timeseries example',
+            'Day precision example',
             value={
                 'data': [
                     {
-                    'date': 'string',
-                    'visitors': 'string',
-                    'pageviews': 'string',
-                    'total_visits': 'string',
-                    'bounce_rate': 'string',
-                    'avg_duration_seconds': 'string',
-                    'views_per_visit': 'string'
-                }
+                        'day': '2026-05-17',
+                        'visitors': 312,
+                        'pageviews': 1_124,
+                        'total_visits': 301,
+                        'bounce_rate': 41.2,
+                        'avg_duration_seconds': 198.7,
+                        'views_per_visit': 3.73
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Timeseries stats retrieved successfully.',
+                'meta': {
+                    'precision': 'day'
+                }
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Month precision example',
+            value={
+                'data': [
+                    {
+                        'month': '2026-05-01',
+                        'visitors': 312,
+                        'pageviews': 1_124,
+                        'total_visits': 301,
+                        'bounce_rate': 41.2,
+                        'avg_duration_seconds': 198.7,
+                        'views_per_visit': 3.73
+                    }
+                ],
+                'message': 'Timeseries stats retrieved successfully.',
+                'meta': {
+                    'precision': 'month'
+                }
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Year precision example',
+            value={
+                'data': [
+                    {
+                        'year': '2026-01-01',
+                        'visitors': 312,
+                        'pageviews': 1_124,
+                        'total_visits': 301,
+                        'bounce_rate': 41.2,
+                        'avg_duration_seconds': 198.7,
+                        'views_per_visit': 3.73
+                    }
+                ],
+                'message': 'Timeseries stats retrieved successfully.',
+                'meta': {
+                    'precision': 'year'
+                }
             },
             response_only=True
         ),
@@ -305,6 +365,7 @@ class TimeseriesView(BaseStatsView):
 
         date_arg = self.parse_date_range()
         stats = {}
+        granularity = None
         if date_arg.get('range'):
             # get granularity 
             granularity = self.auto_granularity(date_arg['range'])
@@ -332,7 +393,7 @@ class TimeseriesView(BaseStatsView):
         else:
             stats = StatsQueryService().get_today_timeseries(site)
 
-        return api_response(status.HTTP_200_OK, data=stats)
+        return api_response(status.HTTP_200_OK, data=stats, meta={'precision': granularity or 'hour'})
 
 @extend_schema(
     parameters=[
@@ -371,13 +432,7 @@ class TimeseriesView(BaseStatsView):
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
-       OpenApiParameter(
-            name='limit',
-            type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
-            description="Pass in an int value",
-            required=False,
-        ),
+        *PAGINATION_QUERY_PARAMETERS,
     ],
     summary="Get top pages viewed.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
@@ -387,24 +442,22 @@ class TimeseriesView(BaseStatsView):
     No query params defaults to today's stats.
     Get top pages viewed.
 """,
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=TopPagesResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
-            'Hour timeseries example',
+            'Top pages example',
             value={
                 'data': [
                     {
-                    'url': 'string',
-                    'visitors': 'string',
-                    'pageviews': 'string',
-                },
+                        'url': 'https://example.com/pricing',
+                        'visitors': 54,
+                        'pageviews': 168,
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Top pages retrieved successfully.'
             },
             response_only=True
         ),
@@ -478,13 +531,7 @@ class TopPagesView(BaseStatsView):
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
-       OpenApiParameter(
-            name='limit',
-            type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
-            description="Pass in an int value",
-            required=False,
-        ),
+        *PAGINATION_QUERY_PARAMETERS,
     ],
     summary="Get top referrers stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
@@ -494,25 +541,23 @@ class TopPagesView(BaseStatsView):
     No query params defaults to today's stats.    
     Get top referrers stats i.e source and medium e.g Organic search, Google.
     """,
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=TopReferrersResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
-            'Hour timeseries example',
+            'Top referrers example',
             value={
                 'data': [
                     {
-                    'source': 'string',
-                    'medium': 'string',
-                    'visitors': 'string',
-                    'pageviews': 'string',
-                },
+                        'source': 'google.com',
+                        'medium': 'organic',
+                        'visitors': 94,
+                        'pageviews': 317,
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Top referrers retrieved successfully.'
             },
             response_only=True
         ),
@@ -584,7 +629,8 @@ class TopReferrersView(BaseStatsView):
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
-        )
+        ),
+        *PAGINATION_QUERY_PARAMETERS,
     ],
     summary="Get top countries stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
@@ -594,23 +640,21 @@ class TopReferrersView(BaseStatsView):
     No query params defaults to today's stats.
     Get countries visiting the site.
 """,
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=CountriesResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
-            'Hour timeseries example',
+            'Top countries example',
             value={
                 'data': [
                     {
-                    'country': 'string',
-                    'visitors': 'string',
-                },
+                        'country': 'United States',
+                        'visitors': 112,
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Top countries retrieved successfully.'
             },
             response_only=True
         ),
@@ -682,7 +726,8 @@ class CountriesView(BaseStatsView):
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
-        )
+        ),
+        *PAGINATION_QUERY_PARAMETERS,
     ],
     summary="Get device types.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
@@ -692,23 +737,21 @@ class CountriesView(BaseStatsView):
     No query params defaults to today's stats.
     Get devices used to visit the site.
 """,
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=DevicesResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
-            'Hour timeseries example',
+            'Top devices example',
             value={
                 'data': [
                     {
-                    'device_type': 'string',
-                    'visitors': 'string',
-                },
+                        'device_type': 'Mobile',
+                        'visitors': 183,
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Device breakdown retrieved successfully.'
             },
             response_only=True
         ),
@@ -780,7 +823,8 @@ class DevicesView(BaseStatsView):
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
-        )
+        ),
+        *PAGINATION_QUERY_PARAMETERS,
     ],
     summary="Get browsers stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
@@ -790,23 +834,21 @@ class DevicesView(BaseStatsView):
     No query params defaults to today's stats.
     Get browsers used to visit the site.
 """,
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=BrowsersResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
-            'Hour timeseries example',
+            'Top browsers example',
             value={
                 'data': [
                     {
-                    'browser': 'string',
-                    'visitors': 'string',
-                },
+                        'browser': 'Chrome',
+                        'visitors': 152,
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Browser usage retrieved successfully.'
             },
             response_only=True
         ),
@@ -879,7 +921,8 @@ class BrowsersView(BaseStatsView):
             location=OpenApiParameter.QUERY,
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
-        )
+        ),
+        *PAGINATION_QUERY_PARAMETERS,
     ],
     summary="Get operating system stats.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
@@ -889,23 +932,21 @@ class BrowsersView(BaseStatsView):
     No query params defaults to today's stats.
     Get operating systems used when visiting the site.
 """,
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=OSResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
-            'Hour timeseries example',
+            'Top OS example',
             value={
                 'data': [
                     {
-                    'os': 'string',
-                    'visitors': 'string',
-                },
+                        'os': 'Android',
+                        'visitors': 98,
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Operating system breakdown retrieved successfully.'
             },
             response_only=True
         ),
@@ -980,13 +1021,7 @@ class OSView(BaseStatsView):
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
-       OpenApiParameter(
-            name='limit',
-            type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
-            description="Pass in an int value",
-            required=False,
-        ),
+        *PAGINATION_QUERY_PARAMETERS,
     ],
     summary="Get top regions.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
@@ -996,23 +1031,21 @@ class OSView(BaseStatsView):
     No query params defaults to today's stats.
     Get top regions visiting the site.
 """,
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=TopRegionsResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
-            'Hour timeseries example',
+            'Top regions example',
             value={
                 'data': [
                     {
-                    'region': 'string',
-                    'visitors': 'string',
-                },
+                        'region': 'North America',
+                        'visitors': 143,
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Top regions retrieved successfully.'
             },
             response_only=True
         ),
@@ -1085,13 +1118,7 @@ class TopRegionsView(BaseStatsView):
             description="Pass in a date string in the format YYYY-MM-DD. Any other format is rejected. Only pass this if interval is set to custom.",
             required=False,
         ),
-       OpenApiParameter(
-            name='limit',
-            type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
-            description="Pass in an int value",
-            required=False,
-        ),
+        *PAGINATION_QUERY_PARAMETERS,
     ],
     summary="Get top cities.",
     description="""Pass in a valid ISO 8601 format string as query params to start, end or day.
@@ -1101,23 +1128,21 @@ class TopRegionsView(BaseStatsView):
     No query params defaults to today's stats.
     Get top cities visiting the site.
 """,
-    responses=OpenApiResponse(
-        response={
-            'data': {},
-            'message': 'Success message'
-        }
-    ),
+    responses={
+        status.HTTP_200_OK: OpenApiResponse(response=TopCitiesResponseSerializer()),
+        **AUTH_RESPONSES,
+    },
     examples=[
         OpenApiExample(
-            'Hour timeseries example',
+            'Top cities example',
             value={
                 'data': [
                     {
-                    'city': 'string',
-                    'visitors': 'string',
-                },
+                        'city': 'Lagos',
+                        'visitors': 71,
+                    }
                 ],
-                'message': 'This is a success response'
+                'message': 'Top cities retrieved successfully.'
             },
             response_only=True
         ),
