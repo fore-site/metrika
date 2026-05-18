@@ -27,13 +27,7 @@ ENV GEOIPUPDATE_ACCOUNT_ID=${MAXMIND_ACCOUNT_ID} \
     GEOIPUPDATE_FREQUENCY=0
 
 # Validate credentials are set and download database with error checking
-RUN if [ -z "$GEOIPUPDATE_ACCOUNT_ID" ] || [ -z "$GEOIPUPDATE_LICENSE_KEY" ]; then \
-    echo "ERROR: MAXMIND_ACCOUNT_ID or MAXMIND_LICENSE_KEY not set"; \
-    exit 1; \
-    fi && \
-    /usr/bin/geoipupdate && \
-    test -f /usr/share/GeoIP/GeoLite2-City.mmdb || \
-    (echo "ERROR: GeoIP database download failed after geoipupdate ran"; exit 1)
+RUN sh -c 'if [ -z "$GEOIPUPDATE_ACCOUNT_ID" ] || [ -z "$GEOIPUPDATE_LICENSE_KEY" ]; then echo "ERROR: MaxMind credentials not set"; exit 1; fi && /usr/bin/geoipupdate && test -f /usr/share/GeoIP/GeoLite2-City.mmdb || (echo "ERROR: GeoIP database download failed"; exit 1)'
 
 # Stage 3: Final application image
 
@@ -49,8 +43,7 @@ COPY backend/ ./
 
 # Create directory for GeoIP database and copy from geoip stage
 RUN mkdir -p /app/geoip
-COPY --from=geoip /usr/share/GeoIP/GeoLite2-City.mmdb /app/geoip/ || \
-    (echo "ERROR: Failed to copy GeoLite2-City.mmdb from build stage. Verify MaxMind credentials."; exit 1)
+COPY --from=geoip /usr/share/GeoIP/GeoLite2-City.mmdb /app/geoip/
 
 # Set up non‑root user and fix ownership
 RUN adduser --disabled-password --gecos '' appuser \
