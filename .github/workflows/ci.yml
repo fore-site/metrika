@@ -17,6 +17,7 @@ jobs:
       postgres:
         image: postgres:15
         env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           POSTGRES_USER: metrika
           POSTGRES_PASSWORD: metrika_pass
           POSTGRES_DB: metrika_test
@@ -39,10 +40,14 @@ jobs:
           --health-retries 5
 
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       DATABASE_URL: postgres://metrika:metrika_pass@localhost:5432/metrika_test
       REDIS_URL: redis://localhost:6379/0
       DJANGO_SECRET_KEY: ci-secret-key-for-tests-only
       DJANGO_SETTINGS_MODULE: config.ci
+      CSRF_TRUSTED_ORIGINS: "http://localhost:3000"
+      DEFAULT_FROM_EMAIL: "metrika@gmail.com"
+      FRONTEND_BASE_URL: "http://localhost:3000"
 
     steps:
       - name: Checkout code
@@ -90,4 +95,5 @@ jobs:
           railway up --service=metrika --service=kind-love
           railway environment deploy
         env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
