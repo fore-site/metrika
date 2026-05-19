@@ -2,7 +2,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from urllib.parse import urljoin, urlencode
 from rq import Retry
-from .tasks import send_email_task
+from .tasks import send_email_task, send_console_email_task
 from accounts.models import LoginAttempt
 from django.utils import timezone
 import django_rq
@@ -103,12 +103,11 @@ class EmailService:
         # During tests, there is no rqworker running. Execute inline so that
         # Django's locmem email backend updates `django.core.mail.outbox`.
         if getattr(settings, 'TESTING', False) or 'test' in sys.argv:
-            send_email_task(
+            send_console_email_task(
                 to_email=to_email,
                 subject=subject,
                 text_body=text_body,
                 html_body=html_body,
-                email_type=email_type,
             )
             return
 
@@ -118,6 +117,7 @@ class EmailService:
             subject=subject,
             text_body=text_body,
             html_body=html_body,
+            email_type=email_type,
             retry=Retry(
                 max=3,
                 interval=[1, 2, 4],

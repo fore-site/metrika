@@ -19,6 +19,7 @@ class AuthTests(TestCase):
         super().setUpClass()
         cls._old_rest_framework = deepcopy(getattr(settings, 'REST_FRAMEWORK', {}))
         cls._old_scoped_throttle_rates = ScopedRateThrottle.THROTTLE_RATES
+        cls._old_debug = deepcopy(getattr(settings, 'DEBUG', ''))
 
         settings.REST_FRAMEWORK = {
             **cls._old_rest_framework,
@@ -32,6 +33,8 @@ class AuthTests(TestCase):
             }
         }
 
+        settings.DEBUG = True
+
         api_settings.reload()
         ScopedRateThrottle.THROTTLE_RATES = defaultdict(
             lambda: None,
@@ -42,6 +45,7 @@ class AuthTests(TestCase):
     def tearDownClass(cls):
         ScopedRateThrottle.THROTTLE_RATES = cls._old_scoped_throttle_rates
         settings.REST_FRAMEWORK = cls._old_rest_framework
+        settings.DEBUG = cls._old_debug
         api_settings.reload()
         super().tearDownClass()
 
