@@ -1,28 +1,31 @@
-version: '3.9'
-
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
+    # Runs the Django dev server on all network interfaces inside the container
+    command: python manage.py runserver 0.0.0.0:8000
     ports:
       - '8000:8000'
     env_file:
       - .env
     environment:
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
-      REDIS_URI: ${REDIS_URL}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
-      EMAIL_HOST: ${EMAIL_HOST:-smtp-relay.brevo.com}
-      EMAIL_PORT: ${EMAIL_PORT:-2525}
-      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
-      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
-      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      - PYTHONUNBUFFERED=1    # Forces real-time console log printing
+      - PYTHONDONTWRITEBYTECODE=1 # Prevents cluttering code with .pyc files
     depends_on:
       - redis
     volumes:
-      - ./backend/db.sqlite3:/app/db.sqlite3
+      # 1. Mounts your project folder to get live code hot-reloading
+      - .:/app
+      # 2. Creates a dedicated named volume for SQLite so it never locks up
+      - sqlite_data:/app/db
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  sqlite_data:
+  redis_data:

@@ -114,7 +114,7 @@ AUTHENTICATION_BACKENDS = ['accounts.backends.CustomModelBackend']
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',   
+        default=f'sqlite:///{BASE_DIR / "db" / "db.sqlite3"}',   
         conn_max_age=600,                 # persistent connections (0 for dev)
         ssl_require=True if config('DATABASE_URL', '') else False,
     )
