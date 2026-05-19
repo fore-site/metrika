@@ -4,12 +4,13 @@ from rq_scheduler import Scheduler
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from datetime import datetime, timedelta, timezone
+import os
 
 class Command(BaseCommand):
     help = 'Start the RQ scheduler that enqueues daily aggregation at 01:30 UTC'
 
     def handle(self, *args, **options):
-        redis_url = settings.RQ_QUEUES['default'].get('URL', 'redis://127.0.0.1:6379/1')
+        redis_url = settings.RQ_QUEUES['default'].get('URL', os.getenv('REDIS_URL'))
         redis_conn = redis.Redis.from_url(redis_url)
         scheduler = Scheduler(connection=redis_conn, queue_name='default')
 
