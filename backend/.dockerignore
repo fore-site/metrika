@@ -9,3 +9,6 @@ venv/
 .git
 .gitignore
 docker-compose.override.yml
+docs/
+tests/
+frontend/

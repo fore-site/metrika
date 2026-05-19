@@ -2,7 +2,6 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from urllib.parse import urljoin, urlencode
 from rq import Retry
-from .exceptions import EmailTransientError
 from .tasks import send_email_task
 from accounts.models import LoginAttempt
 from django.utils import timezone
@@ -35,6 +34,7 @@ class EmailService:
             text_body=text_body,
             html_body=html_body,
             to_email=email,
+            email_type='verification'
         )
 
     def send_password_reset_email(
@@ -60,6 +60,7 @@ class EmailService:
             text_body=text_body,
             html_body=html_body,
             to_email=email,
+            email_type='password_reset',
         )
 
     def send_email_change_verification(self, new_email: str, uidb64: str, token: str, name: str = ''):
@@ -67,13 +68,13 @@ class EmailService:
         context = {'verification_url': verification_url, 'name': name}
         html_body = render_to_string('email/email_change_verify.html', context)
         text_body = f'Hi {name},\n\nPlease confirm your new email: {verification_url}'
-        self._enqueue('Confirm your new email address', text_body, html_body, new_email)
+        self._enqueue('Confirm your new email address', text_body, html_body, new_email, 'email_change_verification')
 
     def send_email_change_notification(self, old_email: str, new_email: str, name: str = ''):
         context = {'name': name, 'old_email': old_email, 'new_email': new_email}
         html_body = render_to_string('email/email_change_notify.html', context)
         text_body = f'Hi {name},\n\nYour email was changed from {old_email} to {new_email}.'
-        self._enqueue('Your email address has been changed', text_body, html_body, old_email)
+        self._enqueue('Your email address has been changed', text_body, html_body, old_email, 'email_change_notification')
 
     def send_suspicious_login_notification(self, user, ip_address: str, user_agent: str):
         attempt = LoginAttempt.objects.filter(
@@ -93,11 +94,12 @@ class EmailService:
             text_body=text_body,
             html_body=html_body,
             to_email=user.email,
+            email_type='suspicious_login',
         )
 
 
     @staticmethod
-    def _enqueue(subject, text_body, html_body, to_email):
+    def _enqueue(subject, text_body, html_body, to_email, email_type='generic'):
         # During tests, there is no rqworker running. Execute inline so that
         # Django's locmem email backend updates `django.core.mail.outbox`.
         if getattr(settings, 'TESTING', False) or 'test' in sys.argv:
@@ -106,6 +108,7 @@ class EmailService:
                 subject=subject,
                 text_body=text_body,
                 html_body=html_body,
+                email_type=email_type,
             )
             return
 
