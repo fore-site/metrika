@@ -7,6 +7,7 @@ from django.shortcuts import render
 from prometheus_client import REGISTRY
 from django.views.decorators.http import require_GET
 
+
 @require_GET
 def metrics_view(request):
     return HttpResponse(generate_latest(), content_type='text/plain; version=0.0.4')

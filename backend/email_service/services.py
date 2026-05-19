@@ -45,7 +45,7 @@ class EmailService:
         name: str = ''
     ) -> None:
         reset_url = self._build_url(
-            path='/reset-password/confirm',
+            path='/password-reset/confirm',
             uid=uidb64,
             token=token,
         )

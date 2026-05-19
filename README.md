@@ -24,7 +24,7 @@ Live docs [here](https://metrika-api.up.railway.app/api/docs/)
 
 ![Metrika Architecture](backend/docs/architecture.png)
 
-- Nginx is only added for future implementation. For now, the roadmap only involves building the next frontend
+- Read [Decisons](DECISIONS.md) for full breakdown of architectural choices and decisions
 
 ## Environment variables
 
