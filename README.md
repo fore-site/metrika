@@ -1,6 +1,7 @@
 # Metrika
 
 A Django analytics backend built for tracking website events, aggregating visitor data, and exposing RESTful reporting endpoints.
+Live docs [here](https://metrika-api.up.railway.app/api/docs/)
 
 ## Highlights
 

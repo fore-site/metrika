@@ -4,3 +4,9 @@ dockerfilePath = "backend/Dockerfile"
 
 [deploy]
 preDeployCommand = "python manage.py migrate"
+
+[build.watch]
+include = [
+    "backend/**",
+    "railway.toml"
+]

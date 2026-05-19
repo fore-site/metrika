@@ -4,7 +4,6 @@ from decouple import config
 from datetime import timedelta
 import sys
 import dj_database_url
-import os
 
 # True when running the Django test runner (e.g. `manage.py test`).
 TESTING = 'test' in sys.argv
@@ -190,7 +189,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', '').split(',')
 
 REFRESH_TOKEN_COOKIE_NAME = 'refresh_token'
 REFRESH_TOKEN_COOKIE_HTTPONLY = True
