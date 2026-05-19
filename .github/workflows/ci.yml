@@ -41,7 +41,7 @@ jobs:
     env:
       DATABASE_URL: postgres://metrika:metrika_pass@localhost:5432/metrika_test
       REDIS_URL: redis://localhost:6379/0
-      SECRET_KEY: ci-secret-key-for-tests-only
+      DJANGO_SECRET_KEY: ci-secret-key-for-tests-only
       DJANGO_SETTINGS_MODULE: config.ci
 
     steps:
