@@ -31,13 +31,13 @@ Live docs [here](https://metrika-api.up.railway.app/api/docs/)
 Create a `.env` file from `.env.example` or set these values in your shell:
 
 - `DJANGO_SECRET_KEY` — Django secret key
-- `REDIS_URI` — Redis connection URL (used for cache and task queues)
+- `REDIS_URL` — Redis connection URL (used for cache and task queues)
 - `FRONTEND_BASE_URL` — allowed frontend URL for CSRF/CORS
-- `EMAIL_HOST` — SMTP server host
-- `EMAIL_PORT` — SMTP server port
-- `EMAIL_USE_TLS` — enable TLS for email delivery
-- `EMAIL_HOST_USER` — SMTP username
-- `EMAIL_HOST_PASSWORD` — SMTP password
+- `BREVO_API_KEY` — API provider for transactional email sending
+- `MAXMIND_LICENSE_KEY` — For GeoCityLite-2 download during docker build
+- `MAXMIND_ACCOUNT_ID` — Also for GeoCityLite-2 download
+- `CSRF_TRUSTED_ORIGINS` — For CSRF protection
+- `DEFAULT_FROM_EMAIL` — Email address that displays to receivers
 
 ```bash
 cp .env.example .env

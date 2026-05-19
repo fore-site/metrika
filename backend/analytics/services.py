@@ -11,9 +11,7 @@ from .models import (
     DailyBrowserStats,
     DailyOSStats,
 )
-from sites.services import SiteService
 from tracking.services import EventService
-from tracking.models import Event
 from django.utils import timezone
 from collections import defaultdict
 from common.utils import get_local_day_utc_range, get_site_timezone
@@ -281,12 +279,12 @@ class StatsQueryService:
     def _os_breakdown(self, stat: BaseManager[DailyOSStats]):
         return stat.values('os').annotate(visitors=Sum('visitors')).order_by('-visitors')
 
-    def _top_regions(self, event: BaseManager[Event]):
+    def _top_regions(self, event):
         return event.exclude(region='').values('region').annotate(
             visitors=Count('visitor_id', distinct=True),
         ).order_by('-visitors')
     
-    def _top_cities(self, event: BaseManager[Event]):
+    def _top_cities(self, event):
         return event.exclude(city='').values('city').annotate(
             visitors=Count('visitor_id', distinct=True),
         ).order_by('-visitors')

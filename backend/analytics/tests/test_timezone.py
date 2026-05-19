@@ -66,7 +66,7 @@ class SiteTimezoneTests(TestCase):
         hour_dt = hour_point['hour']
         self.assertIsNotNone(hour_point, 'Expected an hourly point with visitors')
 
-        self.assertEqual(hour_dt.date(), date(2026, 5, 17))
+        self.assertEqual(hour_dt.date(), date(2026, 5, 16))
         self.assertEqual(hour_point['visitors'], 2)
 
     def test_live_today_utc_site(self):

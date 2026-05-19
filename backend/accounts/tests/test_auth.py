@@ -31,6 +31,7 @@ class AuthTests(TestCase):
                 'tracking': None,
             }
         }
+
         api_settings.reload()
         ScopedRateThrottle.THROTTLE_RATES = defaultdict(
             lambda: None,
