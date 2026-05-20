@@ -90,13 +90,13 @@ jobs:
 
       - name: Deploy API to Production
         run: |
-          railway up --service=metrika 
+          railway up --service metrika 
           railway environment deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Deploy Worker to Production
         run: |
-          railway up --service=kind-love
+          railway up --service kind-love
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
