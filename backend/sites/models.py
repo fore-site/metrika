@@ -1,15 +1,27 @@
 import uuid
 from django.conf import settings
 from django.db import models
+from typing import Callable, List, Tuple
 import zoneinfo
 
-allowed_regions = ("Africa", "America", "Asia", "Atlantic", "Australia", "Europe", "Indian", "Pacific")
+from django.utils.deconstruct import deconstructible
 
-common_zones = sorted([
-    (tz, tz) for tz in zoneinfo.available_timezones() 
-    if tz.startswith(allowed_regions) or tz == "UTC"
-])
+@deconstructible
+class CachedTimezoneChoices:
+    def __init__(self):
+        self._choices = None
 
+    def __call__(self):
+        if self._choices is None:
+            allowed_regions = ("Africa", "America", "Antarctica", "Arctic", "Asia", "Atlantic", "Australia", "Europe", "Indian", "Pacific")
+            self._choices = sorted([
+                (tz, tz) for tz in zoneinfo.available_timezones() 
+                if tz.startswith(allowed_regions) or tz == "UTC"
+            ])
+        return self._choices
+
+# Instantiate the callable
+get_common_timezone_choices = CachedTimezoneChoices()
 
 class Site(models.Model):
     user = models.ForeignKey(
@@ -28,7 +40,7 @@ class Site(models.Model):
     timezone = models.CharField(
         max_length=50,
         default='UTC',
-        choices=common_zones,
+        choices=get_common_timezone_choices, #type: ignore
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
