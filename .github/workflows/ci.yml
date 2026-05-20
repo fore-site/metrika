@@ -17,7 +17,6 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           POSTGRES_USER: metrika
           POSTGRES_PASSWORD: metrika_pass
           POSTGRES_DB: metrika_test
@@ -40,7 +39,6 @@ jobs:
           --health-retries 5
 
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       DATABASE_URL: postgres://metrika:metrika_pass@localhost:5432/metrika_test
       REDIS_URL: redis://localhost:6379/0
       DJANGO_SECRET_KEY: ci-secret-key-for-tests-only
@@ -90,10 +88,15 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Deploy to Railway (all services)
+      - name: Deploy API to Production
         run: |
-          railway up --service=metrika --service=kind-love
+          railway up --service=metrika 
           railway environment deploy
         env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy Worker to Production
+        run: |
+          railway up --service=kind-love
+        env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
