@@ -3,7 +3,11 @@ from django.contrib.gis.geoip2 import GeoIP2, GeoIP2Exception
 
 logger = logging.getLogger(__name__)
 
-g = GeoIP2()
+try:
+    g = GeoIP2()
+except GeoIP2Exception as e:
+    logger.debug(f'Error encountered during GeoIP initialization: {e}')
+    g = {}
 
 def geolocate(ip_address: str) -> dict:
     """
@@ -11,6 +15,10 @@ def geolocate(ip_address: str) -> dict:
     Returns empty dict if IP is private, not found, or an error occurs.
     """
     if not ip_address or ip_address.startswith(('127.', '10.', '192.168.', '172.16.')):
+        return {}
+    
+    if not isinstance(g, GeoIP2):
+        logger.debug(f"GeoIP database unavailable.")
         return {}
     try:
         response = g.city(ip_address)
