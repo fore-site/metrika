@@ -286,3 +286,29 @@ I needed to ensure correctness across all modules and make the project trustwort
 ### Alternatives Considered
 
 - **pytest** with Django plugin – equally good; Django’s built‑in runner offers simplicity.
+
+## 14. Load Testing & Performance Characterisation
+
+### Context
+
+I needed to understand how the API behaves under concurrent load and where the single‑instance deployment reaches its limits.
+
+### Decision
+
+I used **k6** to write and run targeted load tests against the deployed Railway backend. Tests covered:
+
+- **Authentication** (login) – CPU‑bound due to password hashing and JWT signing.
+- **Analytics reads** (raw‑event endpoints) – I/O‑bound, querying the `Event` table.
+
+All tests were executed from a cloud VM (Google Cloud Shell) to eliminate local network bias.
+
+### Key Results
+
+- **Login:** sustained **~7 requests/second** with 0% failures. Latency remained under 1.5 s up to 10 concurrent users; at 100 concurrent users, latency increased to ~10 s while throughput remained constant.
+- **Analytics reads:** served **79 req/s with avg latency 327 ms** under 50 concurrent users, and **138 req/s with avg latency 1.04 s** under 200 concurrent users – both with **0% errors**.
+
+### Consequences
+
+- The single‑instance Railway server handles moderate traffic well and degrades gracefully under overload (no crashes, no dropped connections).
+- The authentication path is CPU‑limited; horizontal scaling would be required for high‑traffic login scenarios.
+- The analytics read path is I/O‑bound and scales well until database connections saturate.
