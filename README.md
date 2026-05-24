@@ -38,6 +38,7 @@ Create a `.env` file from `.env.example` or set these values in your shell:
 - `MAXMIND_ACCOUNT_ID` — Also for GeoCityLite-2 download
 - `CSRF_TRUSTED_ORIGINS` — For CSRF protection
 - `DEFAULT_FROM_EMAIL` — Email address that displays to receivers
+- `AGGREGATION_SECRET` — Secret key for daily aggregation
 
 ```bash
 cp .env.example .env

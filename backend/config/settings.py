@@ -115,7 +115,7 @@ AUTHENTICATION_BACKENDS = ['accounts.backends.CustomModelBackend']
 DATABASES = {
     'default': dj_database_url.config(   
         default=config('DATABASE_URL'),
-        conn_max_age=600, # persistent connections (0 for dev)
+        conn_max_age=600 if not DEBUG else 0, # persistent connections (0 for dev)
         ssl_require=True,
     )
 }
