@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.contrib.auth.hashers import make_password
 
 from sites.models import Site
 from tracking.models import Event
@@ -43,6 +44,13 @@ class Command(BaseCommand):
         if clear:
             self.stdout.write('Clearing existing analytics data...')
             Event.objects.all().delete()
+            
+            self.stdout.write('Clearing existing test sites')
+            Site.objects.filter(user__email__startswith='loadtest').delete()
+
+            self.stdout.write('Clearing exisitng test user data...')
+            User.objects.filter(email__startswith='loadtest').delete()
+
             # Delete all analytics aggregated tables 
             from analytics.models import (
                 DailySiteStats, DailyPageStats, DailyReferrerStats,
@@ -57,11 +65,12 @@ class Command(BaseCommand):
         self.stdout.write(f'Creating {num_users} users...')
         with transaction.atomic():
             users = []
-            
+            password = make_password('LoadTest@Pass')
             for i in range(num_users):
                 users.append(User(
                     email=f'loadtest{i:04d}@example.com',
                     name=f'Load Test {i}',
+                    password=password,
                     is_active=True,
                     is_staff=False,
                     is_suspended=False,
@@ -135,12 +144,12 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS('All Events created.'))
 
             # --- 4. Run aggregation for all affected sites ---
-            self.stdout.write('Running daily aggregation (this may take a moment)...')
-            # Aggregate each site's events for the last 30 days
-            for site in sites:
-                # Find the distinct dates for this site's events
-                dates = Event.objects.filter(site=site).dates('timestamp', 'day')
-                for d in dates:
-                    AggregationService().aggregate_date(site, d)
+            # self.stdout.write('Running daily aggregation (this may take a moment)...')
+            # # Aggregate each site's events for the last 30 days
+            # for site in sites:
+            #     # Find the distinct dates for this site's events
+            #     dates = Event.objects.filter(site=site).dates('timestamp', 'day')
+            #     for d in dates:
+            #         AggregationService().aggregate_date(site, d)
 
-            self.stdout.write(self.style.SUCCESS('Aggregation complete. Dummy data ready.'))
+            # self.stdout.write(self.style.SUCCESS('Aggregation complete. Dummy data ready.'))
