@@ -1,9 +1,9 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-const BASE_URL = __ENV.BASE_URL || 'https://your-app.railway.app';
-const LOGIN_EMAIL = __ENV.LOGIN_EMAIL || 'admin@metrika.com';
-const LOGIN_PASSWORD = __ENV.LOGIN_PASSWORD || 'your-superuser-password';
+const BASE_URL = __ENV.BASE_URL || 'https://metria-api.up.railway.app';
+const LOGIN_EMAIL = __ENV.LOGIN_EMAIL || 'loadtest0001@example.com';
+const LOGIN_PASSWORD = __ENV.LOGIN_PASSWORD || 'LoadTest@Pass';
 
 export function setup() {
   // Perform a single login to get the access token

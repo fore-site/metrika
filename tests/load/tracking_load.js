@@ -3,7 +3,7 @@ import { check } from 'k6';
 import { randomString } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 
 // ---- Configuration (override via environment variables) ----
-const TARGET_URL = __ENV.TARGET_URL || 'https://your-app.railway.app/api/event/';
+const TARGET_URL = __ENV.TARGET_URL || 'https://metrika-api.up.railway.app/api/event/';
 const TRACKING_TOKEN = __ENV.TRACKING_TOKEN;
 
 // ---- Test parameters ----
