@@ -13,7 +13,7 @@ const ENDPOINTS = [
   'timeseries',
 ];
 
-// ---- setup: authenticate and get the list of site IDs ----
+// setup: authenticate
 export function setup() {
   // 1. Login
   const loginUrl = `${BASE_URL}/api/auth/login/`;
@@ -50,11 +50,11 @@ export function setup() {
   return { token};
 }
 
-// ---- Test options ----
+// Test options 
 export const options = {
   stages: [
-    { duration: '30s', target: 20 },   // ramp up to 20 VUs
-    { duration: '1m',  target: 50 },   // stay at 50 VUs
+    { duration: '30s', target: 100 },   // ramp up to 20 VUs
+    { duration: '1m',  target: 200 },   // stay at 50 VUs
     { duration: '30s', target: 0  },   // ramp down
   ],
   thresholds: {
@@ -63,7 +63,7 @@ export const options = {
   },
 };
 
-// ---- Main test function ----
+// Main test function 
 export default function (data) {
   const token = data.token;
 
