@@ -46,6 +46,7 @@ jobs:
       CSRF_TRUSTED_ORIGINS: "http://localhost:3000"
       DEFAULT_FROM_EMAIL: "metrika@gmail.com"
       FRONTEND_BASE_URL: "http://localhost:3000"
+      AGGREGATION_SECRET: ${{ secrets.AGGREGATION_SECRET }}
       BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
     steps:
       - name: Checkout code

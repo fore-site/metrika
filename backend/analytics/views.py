@@ -20,6 +20,9 @@ from .serializers import (
     TopRegionsResponseSerializer,
     TopCitiesResponseSerializer,
 )
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 from django.utils import timezone
 import logging
 from rest_framework.exceptions import ValidationError
@@ -1177,3 +1180,15 @@ class TopCitiesView(BaseStatsView):
             limit = int(request.query_params.get('limit', 10))
             results = list(stats[:limit])
             return api_response(status.HTTP_200_OK, results)
+
+@csrf_exempt
+@require_POST
+@extend_schema(exclude=True)
+def trigger_aggregation(request):
+    secret = request.headers.get('X-Aggregation-Secret')
+    if secret != settings.AGGREGATION_SECRET:
+        return api_response(status.HTTP_403_FORBIDDEN, message='Cannot access this view')
+
+    from analytics.tasks import aggregate_daily_task
+    aggregate_daily_task()
+    return api_response(status.HTTP_200_OK, message='Aggregation triggered.')

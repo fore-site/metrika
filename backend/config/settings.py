@@ -114,6 +114,7 @@ AUTHENTICATION_BACKENDS = ['accounts.backends.CustomModelBackend']
 
 DATABASES = {
     'default': dj_database_url.config(   
+        default=config('DATABASE_URL'),
         conn_max_age=600, # persistent connections (0 for dev)
         ssl_require=True,
     )
@@ -203,6 +204,8 @@ CORS_MAX_AGE = 86400
 EMAIL_CHANGE_TIMEOUT = int(timedelta(hours=24).total_seconds())
 
 GEOIP_PATH = BASE_DIR / 'geoip' / 'GeoLite2-City.mmdb'
+
+AGGREGATION_SECRET = config('AGGREGATION_SECRET')
 
 LOGGING = {
     'version': 1,

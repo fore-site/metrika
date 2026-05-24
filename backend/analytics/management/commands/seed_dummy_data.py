@@ -74,15 +74,13 @@ class Command(BaseCommand):
             self.stdout.write('Creating sites...')
             sites_list = []
             for user in users:
-                # Each user gets 1-3 sites
-                for _ in range(random.randint(1, 3)):
-                    tracking_token = uuid.uuid4().hex
-                    domain = f'loadtest-{random.randint(0, 99999)}.example.com'
-                    sites_list.append(Site(
-                        user=user,
-                        domain=domain,
-                        tracking_token=tracking_token,
-                        timezone=random.choice(['UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo']),
+                tracking_token = uuid.uuid4().hex
+                domain = f'loadtest-{random.randint(0, 99999)}.example.com'
+                sites_list.append(Site(
+                    user=user,
+                    domain=domain,
+                    tracking_token=tracking_token,
+                    timezone=random.choice(['UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo']),
                     ))
             Site.objects.bulk_create(sites_list, batch_size=500)
             sites = list(Site.objects.filter(domain__startswith='loadtest-'))

@@ -10,6 +10,7 @@ from .views import (
     OSView,
     TopRegionsView,
     TopCitiesView,
+    trigger_aggregation,
 )
 
 urlpatterns = [
@@ -23,4 +24,5 @@ urlpatterns = [
     path('<int:site_id>/os/', OSView.as_view(), name='os'),
     path('<int:site_id>/top-regions/', TopRegionsView.as_view(), name='top-regions'),
     path('<int:site_id>/top-cities/', TopCitiesView.as_view(), name='top-cities'),
+    path('internal/aggregate/', trigger_aggregation, name='trigger-aggregation'),
 ]

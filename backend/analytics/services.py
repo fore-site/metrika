@@ -151,86 +151,136 @@ class AggregationService:
                 path_pageviews[path] += 1
                 path_visitors[path].add(row['visitor_id'])
 
-            for path, pageviews in path_pageviews.items():
-                visitors = len(path_visitors[path])
-                DailyPageStats.objects.update_or_create(
-                    site=site,
-                    date=day,
-                    url=path,
-                    defaults={
-                        'visitors': visitors,
-                        'pageviews': pageviews,
-                    }
-                )
+            instances = [DailyPageStats(
+                site=site,
+                date=day,
+                url=path,
+                visitors=len(visitors),
+                pageviews=pageviews,
+            ) for path, pageviews in path_pageviews.items()
+            for visitors in [path_visitors[path]]
+            ]
+            DailyPageStats.objects.bulk_create(
+                instances,
+                update_conflicts=True,
+                unique_fields=['site', 'date', 'url'],
+                update_fields=['visitors', 'pageviews']
+            )
 
             # Referrer stats
-            referrer_data = events.values('source', 'medium').annotate(
-                visitors=Count('visitor_id', distinct=True),
-                pageviews=Count('id'),
-            )
-            for row in referrer_data:
-                DailyReferrerStats.objects.update_or_create(
+            ref_pageviews = defaultdict(int)
+            ref_visitors = defaultdict(set)
+
+            for row in events.values('visitor_id', 'source', 'medium'):
+                key = (row['source'] or 'Direct', row['medium'] or 'none')
+                ref_pageviews[key] += 1
+                ref_visitors[key].add(row['visitor_id'])
+            
+            instances = [
+                DailyReferrerStats(
                     site_id=site.id,
                     date=day,
-                    source=row['source'] or 'Direct',
-                    medium=row['medium'] or 'none',
-                    defaults={
-                        'visitors': row['visitors'],
-                        'pageviews': row['pageviews'],
-                    }
+                    source=source,
+                    medium=medium,
+                    visitors=len(ref_visitors[(source, medium)]),
+                    pageviews=ref_pageviews[(source, medium)]
                 )
+                for source, medium in ref_pageviews
+            ]
+            DailyReferrerStats.objects.bulk_create(
+                instances,
+                update_conflicts=True,
+                unique_fields=['site', 'date', 'source', 'medium'],
+                update_fields=['visitors', 'pageviews']
+            )
 
             # Country stats
-            country_data = events.values('country').annotate(
-                visitors=Count('visitor_id', distinct=True),
-            )
-            for row in country_data:
+            country_visitors = defaultdict(set)
+            for row in events.values('visitor_id', 'country'):
                 if row['country']:
-                    DailyCountryStats.objects.update_or_create(
-                        site_id=site.id,
-                        date=day,
-                        country=row['country'],
-                        defaults={'visitors': row['visitors']}
-                    )
+                    country_visitors[row['country']].add(row['visitor_id'])
+
+            instances = [
+                DailyCountryStats(
+                    site_id=site.id,
+                    date=day,
+                    country=country,
+                    visitors=len(visitors),
+                )
+                for country, visitors in country_visitors.items()
+            ]
+            DailyCountryStats.objects.bulk_create(
+                instances,
+                update_conflicts=True,
+                unique_fields=['site', 'date', 'country'],
+                update_fields=['visitors']
+            )
 
             # Device stats
-            device_data = events.values('device_type').annotate(
-                visitors=Count('visitor_id', distinct=True),
-            )
-            for row in device_data:
+            device_visitors = defaultdict(set)
+            for row in events.values('visitor_id', 'device_type'):
                 if row['device_type']:
-                    DailyDeviceStats.objects.update_or_create(
-                        site_id=site.id,
-                        date=day,
-                        device_type=row['device_type'],
-                        defaults={'visitors': row['visitors']}
-                    )
+                    device_visitors[row['device_type']].add(row['visitor_id'])
+
+            instances = [
+                DailyDeviceStats(
+                    site_id=site.id,
+                    date=day,
+                    device_type=device_type,
+                    visitors=len(visitors)
+                )
+                for device_type, visitors in device_visitors.items()
+            ]
+            DailyDeviceStats.objects.bulk_create(
+                instances,
+                update_conflicts=True,
+                unique_fields=['site', 'date', 'device_type'],
+                update_fields=['visitors'],
+            )
 
             # Browser stats
-            browser_data = events.values('browser').annotate(
-                visitors=Count('visitor_id', distinct=True),
-            )
-            for row in browser_data:
+            browser_visitors = defaultdict(set)
+            for row in events.values('visitor_id', 'browser'):
                 if row['browser']:
-                    DailyBrowserStats.objects.update_or_create(
-                        site_id=site.id,
-                        date=day,
-                        browser=row['browser'],
-                        defaults={'visitors': row['visitors']}
-                    )
+                    browser_visitors[row['browser']].add(row['visitor_id'])
+
+            instances = [
+                DailyBrowserStats(
+                    site=site,
+                    date=day,
+                    browser=browser,
+                    visitors=len(visitors),
+                )
+                for browser, visitors in browser_visitors.items()
+                ]
+            DailyBrowserStats.objects.bulk_create(
+                instances,
+                update_conflicts=True,
+                unique_fields=['site', 'date', 'browser'],
+                update_fields=['visitors'],
+            )
 
             # OS stats
-            os_data = events.values('os').annotate(
-                visitors=Count('visitor_id', distinct=True),
-            )
-            for row in os_data:
+            os_visitors = defaultdict(set)
+            for row in events.values('visitor_id', 'os'):
                 if row['os']:
-                    DailyOSStats.objects.update_or_create(
-                        site_id=site.id,
-                        date=day,
-                        os=row['os'],
-                        defaults={'visitors': row['visitors']}
-                    )
+                    os_visitors[row['os']].add(row['visitor_id'])
+
+            instances = [
+                DailyOSStats(
+                    site=site,
+                    date=day,
+                    os=os,
+                    visitors=len(visitors),
+                )
+                for os, visitors in os_visitors.items()
+            ]
+            DailyOSStats.objects.bulk_create(
+                instances,
+                update_conflicts=True,
+                unique_fields=['site', 'date', 'os'],
+                update_fields=['visitors'],
+            )
 
 class StatsQueryService:
     """Read operations for the dashboard."""

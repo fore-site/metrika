@@ -1,0 +1,15 @@
+name: Daily Aggregation Trigger
+
+on:
+  schedule:
+    - cron: "30 1 * * *" # 01:30 UTC every day
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call aggregation endpoint
+        run: |
+          curl -X POST \
+            -H "X-Aggregation-Secret: ${{ secrets.AGGREGATION_SECRET }}" \
+            https://your-app.railway.app/api/stats/internal/aggregate/
