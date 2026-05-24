@@ -11,7 +11,7 @@ class SiteService:
     def get_sites_for_user(self, user_id: int):
         return Site.objects.filter(user_id=user_id, is_active=True).order_by('-created_at')
 
-    def get_site_by_id(self, site_id: int) -> Site | None:
+    def get_site_by_id(self, site_id) -> Site | None:
         try:
             return Site.objects.get(id=site_id)
         except Site.DoesNotExist:

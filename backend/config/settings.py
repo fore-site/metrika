@@ -70,7 +70,7 @@ REST_FRAMEWORK = {
         'anon': '10000/hour',
         'user': '10000/hour',
         'tracking': '10000/hour',
-        'login': '100000/hour',
+        'login': '5/minute',
         'password-reset': '3/hour'
     },
 }

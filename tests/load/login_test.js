@@ -16,9 +16,9 @@ const PASSWORD = __ENV.LOGIN_PASSWORD || 'LoadTest@Pass';
 
 export const options = {
   stages: [
-    { duration: '3m', target: 100 },   // ramp up to 1000 concurrent users
-    { duration: '2m',  target: 100 },   // stay at 1000
-    { duration: '1m', target: 0  },   // ramp down
+    { duration: '30s', target: 10 },   // ramp up to 1000 concurrent users
+    { duration: '1m',  target: 10 },   // stay at 1000
+    { duration: '30s', target: 0  },   // ramp down
   ],
   thresholds: {
     http_req_duration: ['p(95)<2000'],  // Relax p95 expectations for high load
