@@ -78,9 +78,27 @@ jobs:
           cd backend
           python manage.py test
 
+  # Detect which paths changed
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for backend changes
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'railway.toml'
+
   deploy:
-    needs: test # this job will only run if 'test' succeeds
-    if: success() # also ensures it only runs on success (redundant but safe)
+    needs: [test, changes]
+    if: success() && needs.changes.output.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
