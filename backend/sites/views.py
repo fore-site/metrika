@@ -19,7 +19,7 @@ from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
             value={
                 'data': [
                     {
-                        'public_id': '4f8d22c0-9af2-4b1e-8e7d-a8fbbd3e45a8',
+                        'id': '1',
                         'domain': 'example.com',
                         'tracking_token': '27b9d6e1-9d39-4f8a-99c2-fb6c4ea4e7df',
                         'is_active': True,
@@ -42,7 +42,7 @@ from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
             'Default example',
             value={
                 'data': {
-                        'public_id': '4f8d22c0-9af2-4b1e-8e7d-a8fbbd3e45a8',
+                        'id': '1',
                         'domain': 'example.com',
                         'tracking_token': '27b9d6e1-9d39-4f8a-99c2-fb6c4ea4e7df',
                         'timezone': 'UTC',
@@ -99,7 +99,7 @@ class SiteListCreateView(generics.ListCreateAPIView):
             'Default example',
             value={
                 'data': {
-                        'public_id': '4f8d22c0-9af2-4b1e-8e7d-a8fbbd3e45a8',
+                        'id': '1',
                         'domain': 'example.com',
                         'tracking_token': '27b9d6e1-9d39-4f8a-99c2-fb6c4ea4e7df',
                         'timezone': 'UTC',
@@ -151,10 +151,10 @@ class SiteDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsSiteOwner]
     queryset = Site.objects.all()    # base queryset; object-level filtered by permission
     serializer_class = SiteSerializer
-    lookup_field = 'public_id'
+    lookup_field = 'id'
 
     def get(self, request, *args, **kwargs):
-        instance = self.queryset.filter(public_id=self.kwargs['public_id']).first()
+        instance = self.queryset.filter(id=self.kwargs['id']).first()
         if not instance:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
         self.check_object_permissions(request, instance)
@@ -163,7 +163,7 @@ class SiteDetailView(APIView):
                             message='Site retrieved successfully.')
 
     def put(self, request, *args, **kwargs):
-        instance = self.queryset.filter(public_id=self.kwargs['public_id']).first()
+        instance = self.queryset.filter(id=self.kwargs['id']).first()
         if not instance:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
         self.check_object_permissions(request, instance)
@@ -190,7 +190,7 @@ class SiteDetailView(APIView):
                             message='Site updated.')
 
     def delete(self, request, *args, **kwargs):
-        instance = self.queryset.filter(public_id=self.kwargs['public_id']).first()
+        instance = self.queryset.filter(id=self.kwargs['id']).first()
         if not instance:
             return api_response(status.HTTP_404_NOT_FOUND, message='Site not found.')
         self.check_object_permissions(request, instance)

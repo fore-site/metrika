@@ -102,7 +102,7 @@ class SiteAPITests(TestCase):
         self.auth_header = f'Bearer {self.access}'
         self.list_url = reverse('site-list')
         # Detail URL factory
-        self.detail_url = lambda sid: reverse('site-detail', kwargs={'public_id': sid})
+        self.detail_url = lambda sid: reverse('site-detail', kwargs={'id': sid})
 
     def _create_site(self, domain='example.com'):
         return self.client.post(
@@ -138,7 +138,7 @@ class SiteAPITests(TestCase):
         self._create_site('mine.com')
         # Create another user's site
         other = User.objects.create_user(email='x@y.com', password='x', name='X')
-        other_site = Site.objects.create(user=other, domain='theirs.com')
+        Site.objects.create(user=other, domain='theirs.com')
         res = self.client.get(self.list_url, HTTP_AUTHORIZATION=self.auth_header)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         domains = [s['domain'] for s in res.data['data']]
@@ -148,7 +148,7 @@ class SiteAPITests(TestCase):
     # Detail: retrieve, update, delete
     def test_retrieve_own_site(self):
         create_res = self._create_site('own.com')
-        sid = create_res.data['data']['public_id']
+        sid = create_res.data['data']['id']
         res = self.client.get(self.detail_url(sid), HTTP_AUTHORIZATION=self.auth_header)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['data']['domain'], 'own.com')
@@ -156,12 +156,12 @@ class SiteAPITests(TestCase):
     def test_retrieve_other_user_site_returns_404(self):
         other = User.objects.create_user(email='x@y.com', password='x', name='X')
         site = Site.objects.create(user=other, domain='theirs.com')
-        res = self.client.get(self.detail_url(site.public_id), HTTP_AUTHORIZATION=self.auth_header)
+        res = self.client.get(self.detail_url(site.id), HTTP_AUTHORIZATION=self.auth_header)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_update_domain(self):
         create_res = self._create_site('old.com')
-        sid = create_res.data['data']['public_id']
+        sid = create_res.data['data']['id']
         res = self.client.put(
             self.detail_url(sid),
             {'domain': 'new.com'},
@@ -173,7 +173,7 @@ class SiteAPITests(TestCase):
 
     def test_update_domain_duplicate_fails(self):
         self._create_site('one.com')
-        two = self._create_site('two.com').data['data']['public_id']
+        two = self._create_site('two.com').data['data']['id']
         res = self.client.put(
             self.detail_url(two),
             {'domain': 'one.com'},
@@ -184,7 +184,7 @@ class SiteAPITests(TestCase):
 
     def test_soft_delete(self):
         create_res = self._create_site('bye.com')
-        sid = create_res.data['data']['public_id']
+        sid = create_res.data['data']['id']
         res = self.client.delete(self.detail_url(sid), HTTP_AUTHORIZATION=self.auth_header)
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
 
@@ -192,7 +192,7 @@ class SiteAPITests(TestCase):
         list_res = self.client.get(self.list_url, HTTP_AUTHORIZATION=self.auth_header)
         self.assertEqual(list_res.data['data'], [])
         # But still exists in DB
-        site = Site.objects.get(public_id=sid)
+        site = Site.objects.get(id=sid)
         self.assertFalse(site.is_active)
 
     def test_unauthenticated_requests_return_401(self):
