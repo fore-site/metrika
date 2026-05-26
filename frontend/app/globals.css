@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 99 102 241;
+    --color-success: 16 185 129;
+    --color-danger: 239 68 68;
+    --color-warning: 245 158 11;
+    --color-bg: 249 250 251;
+    --color-surface: 255 255 255;
+    --color-text-primary: 17 24 39;
+    --color-text-secondary: 107 114 128;
+    --color-border: 229 231 235;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background font-body text-textPrimary antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading text-textPrimary;
+  }
+
+  * {
+    @apply border-border;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white border border-gray-200 rounded-xl p-6 shadow-sm;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary-hover;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-primary border border-primary hover:bg-primary/5;
+  }
+
+  .btn-danger {
+    @apply bg-danger text-white hover:bg-danger/90;
+  }
+
+  .input {
+    @apply w-full border border-gray-200 rounded-md px-4 py-2.5 bg-white text-textPrimary placeholder:text-textSecondary focus:outline-none focus:ring-2 focus:ring-primary/20;
+  }
+
+  .dot-grid {
+    background-image: radial-gradient(#d1d5db 2px, transparent 2px);
+    background-size: 20px 20px;
+  }
+}
+
