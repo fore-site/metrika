@@ -8,10 +8,10 @@ export function MarketingNavbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Logo />
         <nav className="hidden items-center gap-6 text-sm text-textSecondary md:flex">
-          <Link className="hover:text-textPrimary" href="#pricing">
+          <Link className="hover:text-textPrimary" href="/pricing">
             Pricing
           </Link>
-          <Link className="hover:text-textPrimary" href="#docs">
+          <Link className="hover:text-textPrimary" href="/docs">
             Docs
           </Link>
         </nav>

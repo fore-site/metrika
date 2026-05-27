@@ -9,10 +9,12 @@ def api_response(status_code: int, data=None, message: str = '', errors=None, me
 
     if is_success:
         body['data'] = data if data is not None else {}
+        body['status'] = 'success'
         if meta is not None:
             body['meta'] = meta
     else:
         body['errors'] = errors or []
+        body['status'] = 'error'
 
     return Response(body, status=status_code)
 

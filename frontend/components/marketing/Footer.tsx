@@ -8,7 +8,7 @@ export function MarketingFooter() {
         <div>
           <Logo className="text-white" href="/" />
           <p className="mt-4 text-sm text-gray-400">
-            Privacy-respecting analytics built for teams that want clarity without compromise.
+            Web analytics built for teams that want clarity without compromise.
           </p>
         </div>
         <div>

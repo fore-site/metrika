@@ -32,6 +32,7 @@ export function extractFieldErrors(errors?: ApiErrorItem[]) {
 
 export function normalizeApiError(status: number, body: ApiEnvelope<unknown> | null) {
   if (body?.status === "error") {
+
     const fieldErrors = extractFieldErrors(body.errors);
     const messageFromServer = body.message ?? "Request failed";
     return new ApiError(status, messageFromServer, fieldErrors, messageFromServer);

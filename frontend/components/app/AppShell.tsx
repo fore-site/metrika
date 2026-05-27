@@ -4,6 +4,7 @@ import * as React from "react";
 import { TopNav } from "@/components/app/TopNav";
 import { useRequireAuth } from "@/context/AuthContext";
 import { Spinner } from "@/components/ui/Button";
+import { MarketingFooter } from "@/components/marketing/Footer";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { accessToken, isBootstrapping } = useRequireAuth();
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       <TopNav />
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">{children}</main>
+      <MarketingFooter />
     </div>
   );
 }

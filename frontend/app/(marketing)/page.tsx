@@ -19,18 +19,19 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 dot-grid opacity-70" aria-hidden="true" />
         <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
-          <div className="max-w-2xl">
+          <div className="max-w-2xl mx-auto text-center">
             <h1 className="font-heading text-4xl font-semibold tracking-tight sm:text-6xl">
-              The Analytics Engine You Control
+              The Complete{" "}
+              <span className="text-primary">Analytics Toolkit</span>
             </h1>
             <p className="mt-5 text-lg text-textSecondary">
               Metrika gives you cloud-hosted analytics without invasive tracking. Own your data, respect your users, and
               ship decisions faster.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Link href="/register" className="inline-flex">
                 <Button>
-                  Start Free Trial <ArrowRight className="h-4 w-4" />
+                  Get Started For Free <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/demo" className="inline-flex">
@@ -98,7 +99,7 @@ export default function HomePage() {
               <span className="grid h-10 w-10 place-items-center rounded-lg bg-success/10 text-success">
                 <Gauge className="h-5 w-5" />
               </span>
-              <div className="text-base font-semibold">Beautiful Dashboard</div>
+              <div className="text-base font-semibold">User-Friendly Dashboard</div>
             </div>
             <p className="mt-3 text-sm text-textSecondary">Trend lines, top pages, referrers, geography, and tech.</p>
           </Card>
@@ -114,31 +115,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="pricing" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <SectionHeading
-          eyebrow="Pricing"
-          title="Start free. Scale with confidence."
-          subtitle="Pick the plan that fits. Upgrade whenever you’re ready."
-        />
-        <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-          <Card>
-            <div className="text-base font-semibold">Starter</div>
-            <div className="mt-2 text-3xl font-semibold">$0</div>
-            <div className="mt-1 text-sm text-textSecondary">Perfect for personal projects.</div>
-          </Card>
-          <Card className="border-primary/40">
-            <div className="text-base font-semibold">Pro</div>
-            <div className="mt-2 text-3xl font-semibold">$19</div>
-            <div className="mt-1 text-sm text-textSecondary">For growing teams and products.</div>
-          </Card>
-          <Card>
-            <div className="text-base font-semibold">Business</div>
-            <div className="mt-2 text-3xl font-semibold">$49</div>
-            <div className="mt-1 text-sm text-textSecondary">Advanced needs and higher volume.</div>
-          </Card>
-        </div>
-      </section>
-
       <section id="docs" className="mx-auto max-w-6xl px-4 pb-4 pt-10 sm:px-6">
         <div className="card relative overflow-hidden">
           <div className="absolute inset-0 dot-grid opacity-60" aria-hidden="true" />
@@ -146,7 +122,7 @@ export default function HomePage() {
             <div>
               <div className="text-sm font-medium text-primary">Ready to understand your traffic?</div>
               <div className="mt-2 text-2xl font-semibold">Create your free account and ship smarter.</div>
-              <div className="mt-2 text-sm text-textSecondary">Get set up in minutes, without compromising user trust.</div>
+              <div className="mt-2 text-sm text-textSecondary">Get set up in minutes.</div>
             </div>
             <Link href="/register" className="inline-flex">
               <Button>

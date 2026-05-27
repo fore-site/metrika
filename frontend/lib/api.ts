@@ -10,7 +10,7 @@ export function getApiBaseUrl() {
 
 export function getCookie(name: string) {
   if (typeof document === "undefined") return null;
-  const m = document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[.$?*|{}()[\\]\\\\/+^]/g, "\\\\$&")}=([^;]*)`));
+  const m = document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[.$?*|{}()[\]\\/+^]/g, "\\$&")}=([^;]*)`));
   return m ? decodeURIComponent(m[1]) : null;
 }
 
@@ -129,6 +129,7 @@ export async function apiFetchEnvelope<T>(auth: AuthLike, pathOrUrl: string, ini
   }
 
   const json = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
+
   if (!res.ok || !json || json.status !== "success") {
     notifyApiError(res.status);
     if (json) throw normalizeApiError(res.status, json);
