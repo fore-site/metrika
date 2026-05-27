@@ -187,7 +187,8 @@ class LoginView(BaseLoginView):
             data = {'access': response.data['access']}
 
             samesite = settings.REFRESH_TOKEN_COOKIE_SAMESITE
-            max_age = settings.REFRESH_TOKEN_MAX_AGE
+            max_age = settings.REFRESH_TOKEN_COOKIE_MAX_AGE
+            secure = settings.REFRESH_TOKEN_COOKIE_SECURE
 
             res = api_response(
                 status.HTTP_200_OK,
@@ -200,6 +201,7 @@ class LoginView(BaseLoginView):
                 httponly=settings.REFRESH_TOKEN_COOKIE_HTTPONLY,
                 max_age=max_age,
                 samesite=samesite,
+                secure=secure,
                 path='/api/auth/',  # Only send cookie to the api/auth endpoint
             )
 
@@ -264,8 +266,9 @@ class TokenRefreshView(BaseRefreshView):
             key=settings.REFRESH_TOKEN_COOKIE_NAME,
             value=str(new_refresh),
             httponly=settings.REFRESH_TOKEN_COOKIE_HTTPONLY,
-            max_age=settings.REFRESH_TOKEN_MAX_AGE,
+            max_age=settings.REFRESH_TOKEN_COOKIE_MAX_AGE,
             samesite=settings.REFRESH_TOKEN_COOKIE_SAMESITE,
+            secure=settings.REFRESH_TOKEN_COOKIE_SECURE,
             path='/api/auth/',
         )
         return res
@@ -498,8 +501,9 @@ class PasswordChangeView(APIView):
             key=settings.REFRESH_TOKEN_COOKIE_NAME,
             value=str(new_refresh),
             httponly=settings.REFRESH_TOKEN_COOKIE_HTTPONLY,
-            max_age=settings.REFRESH_TOKEN_MAX_AGE,
+            max_age=settings.REFRESH_TOKEN_COOKIE_MAX_AGE,
             samesite=settings.REFRESH_TOKEN_COOKIE_SAMESITE,
+            secure=settings.REFRESH_TOKEN_COOKIE_SECURE,
             path='/api/auth/',
         )
         return res
