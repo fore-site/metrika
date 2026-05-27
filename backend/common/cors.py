@@ -1,7 +1,35 @@
 from django.conf import settings
 from django.utils.deprecation import MiddlewareMixin
+from django.http import HttpResponse
 
 class CorsMiddleware(MiddlewareMixin):
+
+    def process_request(self, request):
+        # Only handle preflight (OPTIONS) requests
+        if request.method != 'OPTIONS':
+            return None
+
+        origin = request.headers.get('Origin')
+        allowed_origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', [])
+
+        if not origin or origin not in allowed_origins:
+            # Not an allowed cross‑origin request – let the request continue
+            return None
+
+        # Build a proper preflight response
+        response = HttpResponse(status=200)
+        response['Access-Control-Allow-Origin'] = origin
+        response['Access-Control-Allow-Credentials'] = 'true'
+        response['Access-Control-Allow-Methods'] = getattr(
+            settings, 'CORS_ALLOWED_METHODS', 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+        )
+        response['Access-Control-Allow-Headers'] = getattr(
+            settings, 'CORS_ALLOWED_HEADERS',
+            'Authorization, Content-Type, X-CSRFToken, X-Correlation-ID'
+        )
+        response['Access-Control-Max-Age'] = getattr(settings, 'CORS_MAX_AGE', 86400)
+        return response
+
     def process_response(self, request, response):
 
         if request.path.startswith('/api/event'):
@@ -13,7 +41,7 @@ class CorsMiddleware(MiddlewareMixin):
             return response
 
         allowed_origins = getattr(
-            settings, 'CORS_ALLOWED_ORIGINS', ['http://localhost:3000']
+            settings, 'CORS_ALLOWED_ORIGINS', []
         )
         origin = request.headers.get('Origin')
 

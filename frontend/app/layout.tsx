@@ -18,8 +18,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Metrika — Privacy-first analytics",
-  description: "Cloud-hosted, privacy-respecting analytics you control.",
+  title: "Metrika — Lightning-Fast analytics",
+  description: "Cloud-hosted, web analytics you control.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
