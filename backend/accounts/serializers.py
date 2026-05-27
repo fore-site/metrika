@@ -59,8 +59,8 @@ class CustomTokenObtainPairSerializer(TokenObtainSerializer):
                 )
         # Fallback
         raise AuthenticationFailed(
-            detail="No active account found for the provided credentials.",
-            code="no_active_account",
+            detail="Invalid authentication credentials.",
+            code="invalid_email_or_pass",
         )
 
 class TokenObtainPairResponseSerializer(serializers.Serializer): # For documentation purposes only
