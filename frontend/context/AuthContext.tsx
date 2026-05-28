@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { apiFetchRaw, getApiBaseUrl, getCsrfToken } from "@/lib/api";
+import { apiFetchRaw, getApiBaseUrl } from "@/lib/api";
 import { normalizeApiError } from "@/lib/errors";
 import type { ApiEnvelope } from "@/lib/types";
 import { toast } from "@/lib/toast";
@@ -27,13 +27,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshAccessToken = React.useCallback(async (): Promise<string | null> => {
     const baseUrl = getApiBaseUrl();
-    const csrf = getCsrfToken();
-    console.log('csrf token: ');
-    console.log(csrf);
     const res = await apiFetchRaw(`${baseUrl}/api/auth/token/refresh/`, {
       method: "POST",
       credentials: "include",
-      headers: csrf ? { "X-CSRFToken": csrf } : undefined,
     });
     if (!res.ok) {
       setAccessToken(null);
@@ -88,12 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = React.useCallback(async () => {
     const baseUrl = getApiBaseUrl();
-    const csrf = getCsrfToken();
     const res = await apiFetchRaw(`${baseUrl}/api/auth/logout/`, {
       method: "POST",
       credentials: "include",
       headers: {
-        ...(csrf ? { "X-CSRFToken": csrf } : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
     });

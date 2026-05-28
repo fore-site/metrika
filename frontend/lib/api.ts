@@ -14,17 +14,8 @@ export function getCookie(name: string) {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-export function getCsrfToken() {
-  return getCookie("csrftoken");
-}
-
 export async function apiFetchRaw(input: RequestInfo | URL, init?: RequestInit) {
   return fetch(input, init);
-}
-
-function isUnsafeMethod(method?: string) {
-  const m = (method ?? "GET").toUpperCase();
-  return ["POST", "PUT", "PATCH", "DELETE"].includes(m);
 }
 
 type AuthLike = {
@@ -55,13 +46,11 @@ export async function apiFetch<T>(
   const url = pathOrUrl.startsWith("http") ? pathOrUrl : `${baseUrl}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
 
   const method = (init.method ?? "GET").toUpperCase();
-  const csrf = isUnsafeMethod(method) ? getCsrfToken() : null;
 
   const headers = new Headers(init.headers ?? {});
   headers.set("Accept", "application/json");
   if (!headers.has("Content-Type") && init.body) headers.set("Content-Type", "application/json");
   if (auth.accessToken) headers.set("Authorization", `Bearer ${auth.accessToken}`);
-  if (csrf) headers.set("X-CSRFToken", csrf);
 
   const doRequest = async () =>
     apiFetchRaw(url, {
@@ -98,13 +87,11 @@ export async function apiFetchEnvelope<T>(auth: AuthLike, pathOrUrl: string, ini
   const url = pathOrUrl.startsWith("http") ? pathOrUrl : `${baseUrl}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
 
   const method = (init.method ?? "GET").toUpperCase();
-  const csrf = isUnsafeMethod(method) ? getCsrfToken() : null;
 
   const headers = new Headers(init.headers ?? {});
   headers.set("Accept", "application/json");
   if (!headers.has("Content-Type") && init.body) headers.set("Content-Type", "application/json");
   if (auth.accessToken) headers.set("Authorization", `Bearer ${auth.accessToken}`);
-  if (csrf) headers.set("X-CSRFToken", csrf);
 
   const doRequest = async () =>
     apiFetchRaw(url, {
