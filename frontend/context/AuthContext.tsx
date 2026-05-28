@@ -28,6 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshAccessToken = React.useCallback(async (): Promise<string | null> => {
     const baseUrl = getApiBaseUrl();
     const csrf = getCsrfToken();
+    console.log('csrf token: ');
+    console.log(csrf);
     const res = await apiFetchRaw(`${baseUrl}/api/auth/token/refresh/`, {
       method: "POST",
       credentials: "include",

@@ -43,8 +43,6 @@ MIDDLEWARE = [
     'common.cors.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -183,9 +181,6 @@ else:
 BREVO_API_KEY = config('BREVO_API_KEY')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
-CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SECURE = True if not DEBUG else False
-CSRF_COOKIE_SAMESITE = 'None'
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', '').split(',')
 
 REFRESH_TOKEN_COOKIE_NAME = 'refresh_token'
@@ -194,15 +189,9 @@ REFRESH_TOKEN_COOKIE_SAMESITE = 'None'
 REFRESH_TOKEN_COOKIE_SECURE = True if not DEBUG else False
 REFRESH_TOKEN_COOKIE_MAX_AGE = int(timedelta(days=1).total_seconds())
 
-
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = True if not DEBUG else False
-SESSION_COOKIE_MAX_AGE = int(timedelta(hours=1).total_seconds())
-
 CORS_ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
 CORS_ALLOWED_ORIGINS = [FRONTEND_BASE_URL]
-CORS_ALLOWED_HEADERS = 'Authorization, Content-Type, X-CSRFToken, X-Correlation-ID, X-Tracking-Token'
+CORS_ALLOWED_HEADERS = 'Authorization, Content-Type, X-Correlation-ID, X-Tracking-Token'
 CORS_MAX_AGE = 86400
 
 EMAIL_CHANGE_TIMEOUT = int(timedelta(hours=24).total_seconds())

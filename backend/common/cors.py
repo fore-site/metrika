@@ -25,7 +25,7 @@ class CorsMiddleware(MiddlewareMixin):
         )
         response['Access-Control-Allow-Headers'] = getattr(
             settings, 'CORS_ALLOWED_HEADERS',
-            'Authorization, Content-Type, X-CSRFToken, X-Correlation-ID'
+            'Authorization, Content-Type, X-Correlation-ID'
         )
         response['Access-Control-Max-Age'] = getattr(settings, 'CORS_MAX_AGE', 86400)
         return response
@@ -60,7 +60,7 @@ class CorsMiddleware(MiddlewareMixin):
         response['Access-Control-Allow-Headers'] = getattr(
             settings,
             'CORS_ALLOWED_HEADERS',
-            'Authorization, Content-Type, X-CSRFToken, X-Correlation-ID, X-Tracking-Token',
+            'Authorization, Content-Type, X-Correlation-ID, X-Tracking-Token',
         )
         response['Access-Control-Max-Age'] = getattr(
             settings, 'CORS_MAX_AGE', 86400   # 24 hours

@@ -1,7 +1,4 @@
 from django.conf import settings
-from django.middleware.csrf import get_token
-from django.views.decorators.csrf import csrf_protect
-from django.utils.decorators import method_decorator
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.throttling import ScopedRateThrottle
@@ -25,7 +22,6 @@ from .serializers import (
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
     TokenObtainPairSerializer,
-    TokenObtainPairResponseSerializer,
     VerifyEmailSerializer,
     UserSerializer,
     DeleteAccountSerializer,
@@ -205,7 +201,6 @@ class LoginView(BaseLoginView):
                 path='/api/auth/',  # Only send cookie to the api/auth endpoint
             )
 
-            get_token(request._request)  # Ensure CSRF token is set in the response cookies
             return res
         return response
 
@@ -227,7 +222,6 @@ class LoginView(BaseLoginView):
         )
     ]
 )
-@method_decorator(csrf_protect, name='dispatch')
 class TokenRefreshView(BaseRefreshView):
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get(settings.REFRESH_TOKEN_COOKIE_NAME)
@@ -564,7 +558,6 @@ class ResendVerificationView(APIView):
         )
     ]
 )
-@method_decorator(csrf_protect, name='dispatch')
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
