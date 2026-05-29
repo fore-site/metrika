@@ -18,7 +18,7 @@ const resendSchema = z.object({
 });
 type ResendValues = z.infer<typeof resendSchema>;
 
-export default function VerifyEmailPage() {
+function VerifyEmail() {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -119,5 +119,13 @@ export default function VerifyEmailPage() {
         </form>
       )}
     </AuthCard>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <VerifyEmail />
+    </React.Suspense>
   );
 }

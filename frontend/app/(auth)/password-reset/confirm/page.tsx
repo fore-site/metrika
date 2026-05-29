@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { apiFetchRaw, getApiBaseUrl } from "@/lib/api";
+import { Suspense } from "react";
 import type { ApiEnvelope } from "@/lib/types";
 import { toast } from "@/lib/toast";
 
@@ -30,8 +31,7 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-export default function PasswordResetConfirmPage() {
-  const router = useRouter();
+function PasswordResetConfirm() {
   const sp = useSearchParams();
   const uid = sp.get("uid");
   const token = sp.get("token");
@@ -120,5 +120,13 @@ export default function PasswordResetConfirmPage() {
         </form>
       )}
     </AuthCard>
+  );
+}
+
+export default function PasswordResetConfirmPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <PasswordResetConfirm />
+    </Suspense>
   );
 }

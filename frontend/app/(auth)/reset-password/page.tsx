@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import * as React from "react";
 
-export default function ResetPasswordAliasPage() {
+function ResetPasswordAlias() {
   const sp = useSearchParams();
   const router = useRouter();
 
@@ -17,5 +17,13 @@ export default function ResetPasswordAliasPage() {
   }, [router, sp]);
 
   return null;
+}
+
+export default function ResetPasswordAliasPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <ResetPasswordAlias />
+    </React.Suspense>
+  );
 }
 
