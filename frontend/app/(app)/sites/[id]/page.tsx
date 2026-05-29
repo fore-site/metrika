@@ -37,22 +37,16 @@ const timezones = [
 ];
 
 function TrackingSnippet(props: { site: Site }) {
+  const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin;
+  const src = `${frontendUrl}/js/tracker.js`;
   const [copied, setCopied] = React.useState(false);
-  const [src, setSrc] = React.useState<string>("https://your-analytics.com/js/tracker.js");
-
-  React.useEffect(() => {
-    try {
-      setSrc(new URL("/js/tracker.js", window.location.origin).toString());
-    } catch {
-      // ignore
-    }
-  }, []);
+  const [showInstructions, setShowInstructions] = React.useState(false);
 
   const code = `<script async defer
-  data-domain="${props.site.domain}"
-  data-token="${props.site.tracking_token}"
-  src="${src}">
-</script>`;
+    data-domain="${props.site.domain}"
+    data-token="${props.site.tracking_token}"
+    src="${src}">
+  </script>`;
 
   return (
     <div className="mt-4">
@@ -71,12 +65,55 @@ function TrackingSnippet(props: { site: Site }) {
           {copied ? "Copied" : "Copy"}
         </Button>
       </div>
+
       <pre className="mt-3 overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-4 text-xs text-textPrimary">
         <code>{code}</code>
       </pre>
-      <div className="mt-2 text-xs text-textSecondary">
-        Paste this inside your site’s <code className="rounded bg-white px-1">{"<head>"}</code>.
-      </div>
+
+      {/* Installation instructions */}
+      <button
+        className="mt-2 text-xs text-primary hover:underline focus:outline-none"
+        onClick={() => setShowInstructions(!showInstructions)}
+      >
+        {showInstructions ? "Hide instructions" : "How to install"}
+      </button>
+
+      {showInstructions && (
+        <div className="mt-3 space-y-4 text-sm text-textSecondary">
+          <div>
+            <div className="font-medium text-textPrimary">Plain HTML</div>
+            <p className="mt-1">
+              Paste the snippet just before the closing <code className="rounded bg-gray-50 px-1 text-xs">&lt;/head&gt;</code> tag in your HTML file.
+            </p>
+          </div>
+          <div>
+            <div className="font-medium text-textPrimary">WordPress</div>
+            <p className="mt-1">
+              Install a plugin like “Insert Headers and Footers” or “WPCode”, then add the snippet in the header section.
+            </p>
+          </div>
+          <div>
+            <div className="font-medium text-textPrimary">Next.js</div>
+            <p className="mt-1">
+              In your <code className="rounded bg-gray-50 px-1 text-xs">app/layout.tsx</code>, use the Next.js Script component:
+            </p>
+            <pre className="mt-2 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-textPrimary">
+  {`<Script
+    strategy="beforeInteractive"
+    data-domain="${props.site.domain}"
+    data-token="${props.site.tracking_token}"
+    src="${src}"
+  />`}
+            </pre>
+          </div>
+          <div>
+            <div className="font-medium text-textPrimary">Other platforms (Shopify, Squarespace, etc.)</div>
+            <p className="mt-1">
+              Look for a “Custom Code” or “Header HTML” section in your site’s admin panel and paste the snippet there.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

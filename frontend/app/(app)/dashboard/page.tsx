@@ -45,12 +45,48 @@ export default function DashboardPage() {
   const sp = useSearchParams();
   const dateRange = useDateRangeFromSearch();
 
+  // 1. Sites query (always called)
   const sitesQuery = useQuery({
     queryKey: ["sites"],
     queryFn: () => api.get<Site[]>("/api/sites/"),
   });
 
-  const selectedSiteId = Number(sp.get("site") ?? "") || (sitesQuery.data?.[0] ? Number(sitesQuery.data[0].id) : 0);
+  // 2. Derive selectedSiteId (just a value, not a hook)
+  const selectedSiteId = Number(sp.get("site") ?? "") ||
+    (sitesQuery.data?.[0] ? Number(sitesQuery.data[0].id) : 0);
+
+  // 3. Analytics queries – always called, but disabled when no site
+  const query = toApiQuery(dateRange);
+  const prevRange = getPreviousRange(dateRange);
+  const prevQuery = prevRange ? toApiQuery(prevRange) : null;
+
+  const summaryQuery = useQuery({
+    queryKey: ["summary", selectedSiteId, query],
+    queryFn: () => api.get<SummaryData>(buildStatsUrl(selectedSiteId, "summary", query)),
+    enabled: !!selectedSiteId,
+  });
+
+  const prevSummaryQuery = useQuery({
+    queryKey: ["summary-prev", selectedSiteId, prevQuery],
+    queryFn: () => api.get<SummaryData>(buildStatsUrl(selectedSiteId, "summary", prevQuery!)),
+    enabled: !!selectedSiteId && !!prevQuery,
+  });
+
+  const timeseriesQuery = useQuery({
+    queryKey: ["timeseries", selectedSiteId, query],
+    queryFn: () => api.get<TimeseriesEntry[]>(buildStatsUrl(selectedSiteId, "timeseries", query)),
+    enabled: !!selectedSiteId,
+  });
+
+  const countriesQuery = useQuery({
+    queryKey: ["countries", selectedSiteId, query],
+    queryFn: () =>
+      api.get<CountryItem[]>(buildStatsListUrl(selectedSiteId, "countries", query, { limit: 200, offset: 0 })),
+    enabled: !!selectedSiteId,
+  });
+
+  // 4. Now the rendering – hooks are already registered
+  const err = (e: unknown) => (e instanceof ApiError ? e.message : "Unable to load.");
 
   if (sitesQuery.isLoading) {
     return (
@@ -68,33 +104,6 @@ export default function DashboardPage() {
   if (!selectedSiteId) {
     return <EmptyState title="Select a site" description="Choose a site from the selector to view analytics." />;
   }
-
-  const query = toApiQuery(dateRange);
-  const prevRange = getPreviousRange(dateRange);
-  const prevQuery = prevRange ? toApiQuery(prevRange) : null;
-
-  const summaryQuery = useQuery({
-    queryKey: ["summary", selectedSiteId, query],
-    queryFn: () => api.get<SummaryData>(buildStatsUrl(selectedSiteId, "summary", query)),
-  });
-
-  const prevSummaryQuery = useQuery({
-    queryKey: ["summary-prev", selectedSiteId, prevQuery],
-    enabled: Boolean(prevQuery),
-    queryFn: () => api.get<SummaryData>(buildStatsUrl(selectedSiteId, "summary", prevQuery!)),
-  });
-
-  const timeseriesQuery = useQuery({
-    queryKey: ["timeseries", selectedSiteId, query],
-    queryFn: () => api.get<TimeseriesEntry[]>(buildStatsUrl(selectedSiteId, "timeseries", query)),
-  });
-
-  const countriesQuery = useQuery({
-    queryKey: ["countries", selectedSiteId, query],
-    queryFn: () => api.get<CountryItem[]>(buildStatsListUrl(selectedSiteId, "countries", query, { limit: 200, offset: 0 })),
-  });
-
-  const err = (e: unknown) => (e instanceof ApiError ? e.message : "Unable to load.");
 
   return (
     <div className="space-y-6">

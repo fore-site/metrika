@@ -11,10 +11,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isBootstrapping) {
     return (
-      <div className="dot-grid grid min-h-screen place-items-center bg-background">
-        <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-          <Spinner className="h-4 w-4" />
-          <div className="text-sm text-textSecondary">Restoring session…</div>
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
+        {/* Stats row – six cards */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          ))}
+        </div>
+        {/* Timeseries chart placeholder */}
+        <Skeleton className="h-80 w-full rounded-xl" />
+        {/* Bottom grids (Top Pages / Referrers / Geography etc.) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <Skeleton className="h-48 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Skeleton className="h-48 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-xl" />
         </div>
       </div>
     );

@@ -19,6 +19,7 @@ export function TopNav() {
   const sp = useSearchParams();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
+    const menuRef = React.useRef<HTMLDivElement>(null);
 
   const sitesQuery = useQuery({
     queryKey: ["sites"],
@@ -37,6 +38,18 @@ export function TopNav() {
     router.replace(`${pathname}?${next.toString()}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sitesQuery.isSuccess, selectedSite?.id]);
+
+    // New effect – close user menu on outside click
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
 
   const setSite = (id: string) => {
     const next = setSearchParams(sp as unknown as URLSearchParams, { site: id });

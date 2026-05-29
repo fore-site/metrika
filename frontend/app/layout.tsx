@@ -18,7 +18,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Metrika — Lightning-Fast analytics",
+  title: "Metrika — Analytics Simplified",
   description: "Cloud-hosted, web analytics you control.",
 };
 
