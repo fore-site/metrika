@@ -3,7 +3,7 @@
 import * as React from "react";
 import { TopNav } from "@/components/app/TopNav";
 import { useRequireAuth } from "@/context/AuthContext";
-import { Spinner } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { MarketingFooter } from "@/components/marketing/Footer";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
