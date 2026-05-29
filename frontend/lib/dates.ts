@@ -2,7 +2,8 @@ import { format, parseISO, subDays, differenceInCalendarDays } from "date-fns";
 
 export type DateRange =
   | { kind: "preset"; interval: "24h" | "7d" | "31d" | "91d" | "month-to-date" | "year-to-date" }
-  | { kind: "custom"; start: string; end: string };
+  | { kind: "custom"; start: string; end: string }
+  | {kind: "day"; day: string; };
 
 export function getDefaultDateRange(): DateRange {
   return { kind: "preset", interval: "31d" };
@@ -10,6 +11,7 @@ export function getDefaultDateRange(): DateRange {
 
 export function toApiQuery(range: DateRange): Record<string, string> {
   if (range.kind === "preset") return { interval: range.interval };
+  if (range.kind === "day") return { interval: "day", day: range.day };
   return { interval: "custom", start: range.start, end: range.end };
 }
 
@@ -67,6 +69,14 @@ export function getPreviousRange(range: DateRange): DateRange | null {
     const prevEnd = subDays(start, 1);
     const prevStart = subDays(prevEnd, days);
     return { kind: "custom", start: format(prevStart, "yyyy-MM-dd"), end: format(prevEnd, "yyyy-MM-dd") };
+  }
+
+  if (range.kind === "day") {
+    const day = safeParseDate(range.day);
+    if (!day) return null;
+    // compare to the same day last week
+    const prevDay = subDays(day, 7);
+    return { kind: "custom", start: format(prevDay, "yyyy-MM-dd"), end: format(prevDay, "yyyy-MM-dd") };
   }
   return null;
 }

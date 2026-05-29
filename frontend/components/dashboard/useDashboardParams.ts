@@ -19,6 +19,10 @@ export function useDateRangeFromSearch(): DateRange {
 
   return React.useMemo(() => {
     if (interval === "custom" && start && end) return { kind: "custom", start, end } as const;
+    if (interval === "day") {
+      const day = sp.get("day");
+      if (day) return { kind: "day", day } as const;
+    }
     if (
       interval === "24h" ||
       interval === "7d" ||

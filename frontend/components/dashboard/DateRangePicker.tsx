@@ -50,6 +50,19 @@ export function DateRangePicker() {
   };
 
   const applyCustom = () => {
+    if (!customStart || !customEnd) return;
+
+    // Single‑day pick → use interval=day
+    if (customStart === customEnd) {
+      const next = setSearchParams(sp as unknown as URLSearchParams, {
+        interval: "day",
+        day: customStart,
+        start: null,
+        end: null,
+      });
+      router.replace(`${pathname}?${next.toString()}`);
+      return;
+    }
     const next = setSearchParams(sp as unknown as URLSearchParams, {
       interval: "custom",
       start: customStart,
