@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { clsx } from "clsx";
 
 export function Logo({ className, href = "/" }: { className?: string; href?: string }) {
   return (
-    <Link href={href} className={clsx("inline-flex items-center gap-2", className)} aria-label="Metrika">
+    <a href={href} className={clsx("inline-flex items-center gap-2", className)} aria-label="Metrika">
       {/* Icon container — same size, background & shadow as before */}
       <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-white shadow-sm">
         {/* Stylized M made of bar chart bars */}
@@ -27,6 +26,6 @@ export function Logo({ className, href = "/" }: { className?: string; href?: str
       <span className="font-heading text-lg font-semibold tracking-tight text-textPrimary">
         Metrika
       </span>
-    </Link>
+    </a>
   );
 }
