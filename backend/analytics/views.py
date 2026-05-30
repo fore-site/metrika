@@ -390,7 +390,6 @@ class TimeseriesView(BaseStatsView):
         elif date_arg.get('day'):
             stats = StatsQueryService().get_anyday_timeseries(site.id, date_arg['day'])
         elif date_arg.get('hour'):
-            granularity = 'day'
             now = timezone.now()
             end = now - timedelta(hours=24)
             stats = StatsQueryService().get_hourly_timeseries(site.id, start_dt=end, end_dt=now)
