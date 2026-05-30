@@ -48,6 +48,7 @@ jobs:
       FRONTEND_BASE_URL: "http://localhost:3000"
       AGGREGATION_SECRET: ${{ secrets.AGGREGATION_SECRET }}
       BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      DEMO_SITE_ID: "1234"
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
