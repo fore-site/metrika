@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -73,12 +72,12 @@ export default function LoginPage() {
         </Button>
 
         <div className="flex items-center justify-between text-sm">
-          <Link href="/forgot-password" className="text-primary hover:underline">
+          <a href="/forgot-password" className="text-primary hover:underline">
             Forgot password?
-          </Link>
-          <Link href="/register" className="text-primary hover:underline">
+          </a>
+          <a href="/register" className="text-primary hover:underline">
             Create account
-          </Link>
+          </a>
         </div>
       </form>
     </AuthCard>

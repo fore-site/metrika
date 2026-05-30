@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -99,7 +98,7 @@ export default function RegisterPage() {
             <p className="mt-2 text-sm text-danger">{form.formState.errors.password.message}</p>
           ) : (
             <p className="mt-2 text-xs text-textSecondary">
-              8+ chars, uppercase, number, and special character.
+              8+ chars containing at least uppercase, number, and special character.
             </p>
           )}
         </div>
@@ -126,9 +125,9 @@ export default function RegisterPage() {
 
         <div className="text-center text-sm text-textSecondary">
           Already have an account?{" "}
-          <Link href="/login" className="text-primary hover:underline">
+          <a href="/login" className="text-primary hover:underline">
             Sign in
-          </Link>
+          </a>
         </div>
       </form>
     </AuthCard>

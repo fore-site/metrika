@@ -15,19 +15,19 @@ export function MarketingFooter() {
           <div className="text-sm font-semibold text-white">Product</div>
           <ul className="mt-4 space-y-2 text-sm">
             <li>
-              <Link className="hover:text-white" href="/#features">
+              <a className="hover:text-white" href="/#features">
                 Features
-              </Link>
+              </a>
             </li>
             <li>
-              <Link className="hover:text-white" href="/pricing">
+              <a className="hover:text-white" href="/pricing">
                 Pricing
-              </Link>
+              </a>
             </li>
             <li>
-              <Link className="hover:text-white" href="/dashboard">
+              <a className="hover:text-white" href="/dashboard">
                 Dashboard
-              </Link>
+              </a>
             </li>
           </ul>
         </div>
@@ -35,17 +35,17 @@ export function MarketingFooter() {
           <div className="text-sm font-semibold text-white">Company</div>
           <ul className="mt-4 space-y-2 text-sm">
             <li>
-              <Link className="hover:text-white" href="/docs">
+              <a className="hover:text-white" href="/docs">
                 Docs
-              </Link>
+              </a>
             </li>
             <li>
-              <Link className="hover:text-white" href="/register">
+              <a className="hover:text-white" href="/register">
                 Start Free Trial
-              </Link>
+              </a>
             </li>
             <li>
-              <a className="hover:text-white" href="mailto:support@metrika.com">
+              <a className="hover:text-white" href="mailto:noreply.metrika@gmail.com">
                 Support
               </a>
             </li>
@@ -56,12 +56,12 @@ export function MarketingFooter() {
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 py-6 text-xs text-gray-500 sm:flex-row sm:items-center sm:px-6">
           <div>© {new Date().getFullYear()} Metrika. All rights reserved.</div>
           <div className="flex gap-4">
-            <Link className="hover:text-gray-300" href="#">
+            <a className="hover:text-gray-300" href="#">
               Privacy
-            </Link>
-            <Link className="hover:text-gray-300" href="#">
+            </a>
+            <a className="hover:text-gray-300" href="#">
               Terms
-            </Link>
+            </a>
           </div>
         </div>
       </div>

@@ -14,7 +14,6 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useApi } from "@/lib/useApi";
 import { applyApiFieldErrors } from "@/lib/formErrors";
 import { ApiError } from "@/lib/errors";
-import { toast } from "@/lib/toast";
 import type { User } from "@/types/user";
 
 const nameSchema = z.object({
@@ -70,13 +69,11 @@ export default function ProfilePage() {
       await api.patch<User>("/api/auth/me/", { name: values.name });
       await qc.invalidateQueries({ queryKey: ["me"] });
       setNameSaved(true);
-      toast.success("Name updated.");
     } catch (err) {
       const applied = applyApiFieldErrors(err, nameForm.setError);
       if (!applied) {
         const message = err instanceof ApiError ? err.message : "Unable to update name.";
         setNameError(message);
-        toast.error(message);
       }
     }
   });
@@ -91,13 +88,11 @@ export default function ProfilePage() {
       });
       passwordForm.reset();
       setPasswordSaved(true);
-      toast.success("Password changed successfully.");
     } catch (err) {
       const applied = applyApiFieldErrors(err, passwordForm.setError);
       if (!applied) {
         const message = err instanceof ApiError ? err.message : "Unable to change password.";
         setPasswordError(message);
-        toast.error(message);
       }
     }
   });

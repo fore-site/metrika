@@ -1,6 +1,5 @@
 import { MarketingFooter } from "@/components/marketing/Footer";
 import { Logo } from "@/components/branding/Logo";
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -10,9 +9,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
               <Logo />
               <div className="flex items-center gap-3">
-                <Link href="/login">
+                <a href="/login">
                   <Button variant="secondary">Sign In</Button>
-                </Link>
+                </a>
               </div>
             </div>
       </header>

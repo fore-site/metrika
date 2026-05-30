@@ -76,11 +76,9 @@ function VerifyEmail() {
     const json = (await res.json().catch(() => null)) as ApiEnvelope<Record<string, never>> | null;
     if (res.ok && json?.status === "success") {
       setResent(true);
-      toast.success("A new verification link has been sent.");
     } else {
       const message = json?.message ?? "Unable to resend.";
       form.setError("email", { type: "server", message });
-      toast.error(message);
     }
   });
 

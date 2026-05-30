@@ -6,7 +6,8 @@ export type DateRange =
   | {kind: "day"; day: string; };
 
 export function getDefaultDateRange(): DateRange {
-  return { kind: "preset", interval: "31d" };
+  const today = new Date().toISOString().slice(0, 10);
+  return { kind: "day", day: today };
 }
 
 export function toApiQuery(range: DateRange): Record<string, string> {

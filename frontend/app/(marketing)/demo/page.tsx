@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
@@ -13,12 +12,12 @@ export default function DemoPage() {
             The demo dashboard will showcase Metrika’s own analytics once the demo site is created in the database.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/register" className="inline-flex">
+            <a href="/register" className="inline-flex">
               <Button>Start Free Trial</Button>
-            </Link>
-            <Link href="/" className="inline-flex">
+            </a>
+            <a href="/" className="inline-flex">
               <Button variant="secondary">Back to Home</Button>
-            </Link>
+            </a>
           </div>
         </div>
       </Card>

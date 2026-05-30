@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { apiFetchRaw, getApiBaseUrl } from "@/lib/api";
-import { toast } from "@/lib/toast";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -29,7 +28,6 @@ export default function ForgotPasswordPage() {
       body: JSON.stringify({ email: values.email }),
     }).catch(() => null);
     setSent(true);
-    toast.success("If that email exists, a reset link has been sent.");
   });
 
   return (

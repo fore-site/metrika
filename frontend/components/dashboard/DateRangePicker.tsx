@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { parseISO, format } from "date-fns";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { setSearchParams } from "@/lib/url";
 
 type Preset = "24h" | "day" | "7d" | "31d" | "91d" | "month-to-date" | "year-to-date";
@@ -74,18 +76,21 @@ export function DateRangePicker() {
   return (
     <div className="flex w-full max-w-md items-center justify-end gap-2">
       <div className="flex flex-1 items-center gap-2">
-        <label className="sr-only" htmlFor="rangeMode">
-          Range mode
-        </label>
-        <select
-          id="rangeMode"
-          className="input h-11 w-40"
-          value={mode}
-          onChange={(e) => setMode(e.target.value as "preset" | "custom")}
-        >
-          <option value="preset">Preset</option>
-          <option value="custom">Custom</option>
-        </select>
+        <label className="sr-only">Range mode</label>
+        <DropdownMenu label={mode === "preset" ? "Preset" : "Custom"}>
+          <button
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+            onClick={() => setMode("preset")}
+          >
+            Preset
+          </button>
+          <button
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+            onClick={() => setMode("custom")}
+          >
+            Custom
+          </button>
+        </DropdownMenu>
       </div>
 
       {mode === "preset" ? (
@@ -93,20 +98,70 @@ export function DateRangePicker() {
           <label className="sr-only" htmlFor="interval">
             Interval
           </label>
-          <select
-            id="interval"
-            className="input h-11 w-full"
-            value={preset}
-            onChange={(e) => applyPreset(e.target.value as Preset)}
+          <DropdownMenu
+            label={
+              preset === "day" && sp.get("day")
+                ? format(parseISO(sp.get("day")!), "MMM d, yyyy")
+                : preset === "day"
+                ? "Today"
+                : preset === "24h"
+                ? "Last 24 hours"
+                : preset === "7d"
+                ? "Last 7 days"
+                : preset === "31d"
+                ? "Last 31 days"
+                : preset === "91d"
+                ? "Last 91 days"
+                : preset === "month-to-date"
+                ? "Month to date"
+                : preset === "year-to-date"
+                ? "Year to date"
+                : "Unknown"
+            }
           >
-            <option value="day">Today</option>
-            <option value="24h">Last 24 hours</option>
-            <option value="7d">Last 7 days</option>
-            <option value="31d">Last 31 days</option>
-            <option value="91d">Last 91 days</option>
-            <option value="month-to-date">Month to date</option>
-            <option value="year-to-date">Year to date</option>
-          </select>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              onClick={() => applyPreset("day")}
+            >
+              Today
+            </button>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              onClick={() => applyPreset("24h")}
+            >
+              Last 24 hours
+            </button>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              onClick={() => applyPreset("7d")}
+            >
+              Last 7 days
+            </button>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              onClick={() => applyPreset("31d")}
+            >
+              Last 31 days
+            </button>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              onClick={() => applyPreset("91d")}
+            >
+              Last 91 days
+            </button>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              onClick={() => applyPreset("month-to-date")}
+            >
+              Month to date
+            </button>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              onClick={() => applyPreset("year-to-date")}
+            >
+              Year to date
+            </button>
+          </DropdownMenu>
         </div>
       ) : (
         <div className="flex flex-1 items-center gap-2">

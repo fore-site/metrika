@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/Label";
 import { apiFetchRaw, getApiBaseUrl } from "@/lib/api";
 import { Suspense } from "react";
 import type { ApiEnvelope } from "@/lib/types";
-import { toast } from "@/lib/toast";
 
 const passwordRules = z
   .string()
@@ -59,11 +58,9 @@ function PasswordResetConfirm() {
     const json = (await res.json().catch(() => null)) as ApiEnvelope<Record<string, never>> | null;
     if (res.ok && json?.status === "success") {
       setDone(true);
-      toast.success("Password reset successfully.");
     } else {
       const message = json?.message ?? "Invalid or expired reset token.";
       setServerError(message);
-      toast.error(message);
     }
   });
 
@@ -74,9 +71,9 @@ function PasswordResetConfirm() {
           <div className="rounded-md border border-success/30 bg-success/5 px-3 py-3 text-sm text-success">
             Password reset successful. You can now sign in.
           </div>
-          <Link href="/login" className="inline-flex w-full">
+          <a href="/login" className="inline-flex w-full">
             <Button className="w-full">Go to Login</Button>
-          </Link>
+          </a>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
@@ -107,9 +104,9 @@ function PasswordResetConfirm() {
           {serverError ? (
             <div className="rounded-md border border-danger/30 bg-danger/5 px-3 py-3 text-sm text-danger">
               {serverError}{" "}
-              <Link href="/forgot-password" className="underline">
+              <a href="/forgot-password" className="underline">
                 Request a new reset link
-              </Link>
+              </a>
               .
             </div>
           ) : null}

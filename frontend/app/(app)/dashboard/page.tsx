@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/Card";
