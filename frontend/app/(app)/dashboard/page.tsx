@@ -74,9 +74,15 @@ export default function DashboardPage() {
 
   const timeseriesQuery = useQuery({
     queryKey: ["timeseries", selectedSiteId, query],
-    queryFn: () => api.get<TimeseriesEntry[]>(buildStatsUrl(selectedSiteId, "timeseries", query)),
+    queryFn: () => api.envelope<TimeseriesEntry[]>(buildStatsUrl(selectedSiteId, "timeseries", query)),
     enabled: !!selectedSiteId,
   });
+
+  // Extract the inner data array and the precision from meta
+  const envelope = timeseriesQuery.data;
+  const timeseriesData = envelope?.status === "success" ? envelope.data : [];
+  const precision = (envelope?.status === "success" ? envelope.meta?.precision : undefined) as
+    "hour" | "day" | "month" | "year" | undefined;
 
   const countriesQuery = useQuery({
     queryKey: ["countries", selectedSiteId, query],
@@ -116,11 +122,8 @@ export default function DashboardPage() {
       ) : null}
 
       <TimeseriesChart
-        data={(timeseriesQuery.data ?? []).map((d) => ({
-          label: d.date ?? d.hour ?? d.month ?? d.year ?? "",
-          visitors: d.visitors,
-          pageviews: d.pageviews,
-        }))}
+        data={timeseriesData.map((d) => ({ label: d.date ?? d.hour ?? d.month ?? d.year ?? "", visitors: d.visitors }))}
+        precision={precision ?? "day"}   // fallback to 'day' if meta missing
         isLoading={timeseriesQuery.isLoading}
         error={timeseriesQuery.error ? err(timeseriesQuery.error) : null}
       />
