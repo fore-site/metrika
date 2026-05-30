@@ -23,6 +23,7 @@ import { getPreviousRange, toApiQuery } from "@/lib/dates";
 import { useDateRangeFromSearch } from "@/components/dashboard/useDashboardParams";
 import { ApiError } from "@/lib/errors";
 import { DemoTopNav } from "@/components/demo/DemoTopNav";
+import { Suspense } from "react";
 
 const DEMO_API_BASE =
   (process.env.NEXT_PUBLIC_API_URL || "https://metrika-api.up.railway.app") +
@@ -66,7 +67,7 @@ async function fetchDemoEnvelope<T>(url: string): Promise<any> {
   return json; // full envelope, used for timeseries meta
 }
 
-export default function DemoPage() {
+function DemoBase() {
   const dateRange = useDateRangeFromSearch();
 
   const query = toApiQuery(dateRange);
@@ -235,5 +236,13 @@ export default function DemoPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function DemoPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <DemoBase />
+    </Suspense>
   );
 }

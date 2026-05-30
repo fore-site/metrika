@@ -22,6 +22,7 @@ export function TopNav() {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = React.useRef<HTMLDivElement>(null);
 
   const sitesQuery = useQuery({
     queryKey: ["sites"],
@@ -59,6 +60,26 @@ export function TopNav() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [menuOpen]);
+
+    // Close mobile menu when clicking outside (or tapping outside)
+  React.useEffect(() => {
+    if (!mobileOpen) return;
+
+    const handleClickOutside = (event: Event) => {
+      // Ignore clicks on the hamburger toggle (it has its own handler)
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setMobileOpen(false);
+      }
+    };
+
+    // Use both mousedown and touchstart for responsiveness
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [mobileOpen]);
 
   const setSite = (id: string) => {
     const next = setSearchParams(sp as unknown as URLSearchParams, { site: id });
@@ -161,32 +182,53 @@ export function TopNav() {
       </div>
 
       {mobileOpen ? (
-        <div className="border-t border-gray-200 bg-white px-4 pb-4 pt-4 md:hidden">
+        <div
+          ref={mobileMenuRef} 
+          className="border-t border-gray-200 bg-white px-4 pb-4 pt-4 md:hidden">
           <div className="space-y-3">
             <div>
               <div className="text-xs font-medium text-textSecondary">Site</div>
-              <select
-                className="input mt-2 h-11"
-                value={selectedSite ? String(selectedSite.id) : ""}
-                onChange={(e) => setSite(e.target.value)}
-                disabled={sitesQuery.isLoading || sites.length === 0}
-              >
-                {sites.length === 0 ? <option value="">No sites</option> : null}
-                {sites.map((s) => (
-                  <option key={s.id} value={String(s.id)}>
-                    {s.domain}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-2">
+                <DropdownMenu
+                  label={
+                    sitesQuery.isLoading
+                      ? "Loading sites…"
+                      : selectedSite
+                      ? selectedSite.domain
+                      : sites.length === 0
+                      ? "No sites"
+                      : "Select a site"
+                  }
+                >
+                  {sites.map((s) => (
+                    <button
+                      key={s.id}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50"
+                      onClick={() => setSite(String(s.id))}
+                      disabled={sitesQuery.isLoading || sites.length === 0}
+                    >
+                      {s.domain}
+                    </button>
+                  ))}
+                </DropdownMenu>
+              </div>
             </div>
             {showDatePicker ? <DateRangePicker /> : null}
             <div className="flex gap-2">
-              <Link href={selectedSite ? `/sites/${selectedSite.id}` : "/dashboard"} className="flex-1">
+              <Link 
+                href={selectedSite ? `/sites/${selectedSite.id}` : "/dashboard"} 
+                className="flex-1"
+                onClick={() => setMobileOpen(false)}
+              >
                 <Button variant="secondary" className="w-full">
                   <Settings className="h-4 w-4" /> Settings
                 </Button>
               </Link>
-              <Link href="/profile" className="flex-1">
+              <Link 
+                href="/profile" 
+                className="flex-1"
+                onClick={() => setMobileOpen(false)}
+              >
                 <Button variant="secondary" className="w-full">
                   <UserCircle2 className="h-4 w-4" /> Profile
                 </Button>
