@@ -581,18 +581,35 @@ class StatsQueryService:
         return timeseries
 
     def get_today_top_pages(self, site):
-        local_today = timezone.now().astimezone(get_site_timezone(site)).date()
-        start_utc, end_utc = get_local_day_utc_range(site, local_today)
+        today = timezone.now().astimezone(get_site_timezone(site)).date()
+        start_utc, end_utc = get_local_day_utc_range(site, today)
 
-        return (
+        # Fetch raw events and strip query strings
+        events = (
             EventService().get_site_events_timestamp(site.id, start_utc, end_utc)
-            .values('url')
-            .annotate(
-                visitors=Count('visitor_id', distinct=True),
-                pageviews=Count('id'),
-            )
-            .order_by('-pageviews')
+            .values_list('url', flat=True)   # get list of URLs
         )
+
+        # Group by cleaned path
+        path_pageviews = defaultdict(int)
+        path_visitors = defaultdict(set)
+
+        # We need visitor_id per event for distinct count
+        raw = EventService().get_site_events_timestamp(site.id, start_utc, end_utc).values('visitor_id', 'url')
+
+        for row in raw:
+            path = clean_path(row['url'])
+            path_pageviews[path] += 1
+            path_visitors[path].add(row['visitor_id'])
+
+        # Build result list
+        result = [
+            {'url': path, 'visitors': len(path_visitors[path]), 'pageviews': path_pageviews[path]}
+            for path in path_pageviews
+        ]
+        # Sort by pageviews descending and limit
+        result.sort(key=lambda x: x['pageviews'], reverse=True)
+        return result
 
     def get_today_top_referrers(self, site):
         local_today = timezone.now().astimezone(get_site_timezone(site)).date()
@@ -708,15 +725,31 @@ class StatsQueryService:
         return timeseries
 
     def get_hourly_top_pages(self, site_id: int, start_dt: datetime, end_dt: datetime):
-        return (
-            EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
-            .values('url')
-            .annotate(
-                visitors=Count('visitor_id', distinct=True),
-                pageviews=Count('id'),
-            )
-            .order_by('-pageviews')
+        # Fetch raw events and strip query strings
+        events = (EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
+            .values_list('url', flat=True)   # get list of URLs
         )
+
+        # Group by cleaned path
+        path_pageviews = defaultdict(int)
+        path_visitors = defaultdict(set)
+
+        # We need visitor_id per event for distinct count
+        raw = EventService().get_site_events_hour_range(site_id, start_dt, end_dt).values('visitor_id', 'url')
+
+        for row in raw:
+            path = clean_path(row['url'])
+            path_pageviews[path] += 1
+            path_visitors[path].add(row['visitor_id'])
+
+        # Build result list
+        result = [
+            {'url': path, 'visitors': len(path_visitors[path]), 'pageviews': path_pageviews[path]}
+            for path in path_pageviews
+        ]
+        # Sort by pageviews descending and limit
+        result.sort(key=lambda x: x['pageviews'], reverse=True)
+        return result
 
     def get_hourly_top_referrers(self, site_id: int, start_dt: datetime, end_dt: datetime):
         return (
