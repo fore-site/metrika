@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { useApi } from "@/lib/useApi";
 import { setSearchParams } from "@/lib/url";
 import type { Site } from "@/types/site";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 
 export function TopNav() {
@@ -85,20 +86,28 @@ export function TopNav() {
             <label className="sr-only" htmlFor="site">
               Site
             </label>
-            <select
-              id="site"
-              className="input h-11"
-              value={selectedSite ? String(selectedSite.id) : ""}
-              onChange={(e) => setSite(e.target.value)}
-              disabled={sitesQuery.isLoading || sites.length === 0}
+            <DropdownMenu
+              label={
+                sitesQuery.isLoading
+                  ? "Loading sites…"
+                  : selectedSite
+                  ? selectedSite.domain
+                  : sites.length === 0
+                  ? "No sites"
+                  : "Select a site"
+              }
             >
-              {sites.length === 0 ? <option value="">No sites</option> : null}
               {sites.map((s) => (
-                <option key={s.id} value={String(s.id)}>
+                <button
+                  key={s.id}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50"
+                  onClick={() => setSite(String(s.id))}
+                  disabled={sitesQuery.isLoading || sites.length === 0}
+                >
                   {s.domain}
-                </option>
+                </button>
               ))}
-            </select>
+            </DropdownMenu>
           </div>
           {showDatePicker ? <DateRangePicker /> : null}
         </div>

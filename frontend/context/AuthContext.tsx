@@ -76,7 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw normalizeApiError(res.status, json);
       }
       setAccessToken(json.data.access);
-      toast.success("Signed in successfully.");
       router.push("/dashboard");
     },
     [router],
@@ -93,12 +92,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (!res.ok) {
       setAccessToken(null);
-      toast.info("Signed out.");
       router.push("/login");
       return;
     }
     setAccessToken(null);
-    toast.info("Signed out.");
     router.push("/login");
   }, [accessToken, router]);
 
