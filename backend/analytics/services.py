@@ -546,6 +546,7 @@ class StatsQueryService:
         session_metrics = AggregationService().get_session_metrics(site.id, start_dt=start_utc, end_dt=end_utc)
         sessions = session_metrics['total_visits']
 
+        stats['total_visits'] = sessions
         stats['bounce_rate'] = round(session_metrics['single_page_sessions'] / sessions * 100) if sessions else 0
         stats['avg_duration_seconds'] = round(session_metrics['total_duration_seconds'] / sessions) if sessions else 0
         stats['views_per_visit'] = round(session_metrics['total_pageviews_in_sessions'] / sessions, 2) if sessions else 0.00
