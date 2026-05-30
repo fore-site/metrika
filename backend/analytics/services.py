@@ -285,6 +285,11 @@ class AggregationService:
 class StatsQueryService:
     """Read operations for the dashboard."""
 
+    def _clean_path(self, url: str):
+        """Strip query parameters from url"""
+        parsed = urlparse(url)
+        return urlunparse(parsed._replace(query=''))
+
     def _site_summary(self, stat: BaseManager[DailySiteStats]):
         summary = stat.aggregate(
             visitors=Sum('visitors'),
@@ -598,7 +603,7 @@ class StatsQueryService:
         raw = EventService().get_site_events_timestamp(site.id, start_utc, end_utc).values('visitor_id', 'url')
 
         for row in raw:
-            path = clean_path(row['url'])
+            path = self._clean_path(row['url'])
             path_pageviews[path] += 1
             path_visitors[path].add(row['visitor_id'])
 
@@ -738,7 +743,7 @@ class StatsQueryService:
         raw = EventService().get_site_events_hour_range(site_id, start_dt, end_dt).values('visitor_id', 'url')
 
         for row in raw:
-            path = clean_path(row['url'])
+            path = self._clean_path(row['url'])
             path_pageviews[path] += 1
             path_visitors[path].add(row['visitor_id'])
 
