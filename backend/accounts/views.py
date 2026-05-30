@@ -226,16 +226,18 @@ class TokenRefreshView(BaseRefreshView):
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get(settings.REFRESH_TOKEN_COOKIE_NAME)
         if not refresh_token:
-                return api_response(
-                    status.HTTP_400_BAD_REQUEST,
-                    message='Refresh token is required.',
-                )
+            logger.error('No refresh token present')
+            return api_response(
+                status.HTTP_400_BAD_REQUEST,
+                message='Refresh token is required.',
+            )
 
         try:
             old_refresh = RefreshToken(refresh_token)
             old_refresh.check_blacklist()
 
         except TokenError:
+            logger.error('Invalid or expired refresh token attempted')
             return api_response(
                 status.HTTP_400_BAD_REQUEST,
                 message='Invalid or expired refresh token.',
