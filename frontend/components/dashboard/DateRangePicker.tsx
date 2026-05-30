@@ -28,6 +28,8 @@ export function DateRangePicker() {
   const [customStart, setCustomStart] = React.useState(sp.get("start") ?? "");
   const [customEnd, setCustomEnd] = React.useState(sp.get("end") ?? "");
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   React.useEffect(() => {
     setMode(isCustom ? "custom" : "preset");
     setCustomStart(sp.get("start") ?? "");
@@ -100,23 +102,27 @@ export function DateRangePicker() {
           </label>
           <DropdownMenu
             label={
-              preset === "day" && sp.get("day")
-                ? format(parseISO(sp.get("day")!), "MMM d, yyyy")
-                : preset === "day"
-                ? "Today"
-                : preset === "24h"
-                ? "Last 24 hours"
-                : preset === "7d"
-                ? "Last 7 days"
-                : preset === "31d"
-                ? "Last 31 days"
-                : preset === "91d"
-                ? "Last 91 days"
-                : preset === "month-to-date"
-                ? "Month to date"
-                : preset === "year-to-date"
-                ? "Year to date"
-                : "Unknown"
+              (() => {
+                if (preset === "day") {
+                  const dayParam = sp.get("day");
+                  if (!dayParam) return "Today";                 // fallback
+                  // If the selected day is today, show "Today"
+                  if (dayParam === todayStr) return "Today";
+                  // Otherwise show the formatted date (e.g., "May 20, 2026")
+                  try {
+                    return format(parseISO(dayParam), "MMM d, yyyy");
+                  } catch {
+                    return "Today";                               // parse error fallback
+                  }
+                }
+                if (preset === "24h") return "Last 24 hours";
+                if (preset === "7d") return "Last 7 days";
+                if (preset === "31d") return "Last 31 days";
+                if (preset === "91d") return "Last 91 days";
+                if (preset === "month-to-date") return "Month to date";
+                if (preset === "year-to-date") return "Year to date";
+                return "Unknown";
+              })()
             }
           >
             <button

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -34,16 +33,16 @@ export default function PricingPage() {
               </li>
             ))}
           </ul>
-          <Link href="/register" className="mt-8 inline-flex w-full">
+          <a href="/register" className="mt-8 inline-flex w-full">
             <Button className="w-full">Start Free Trial</Button>
-          </Link>
+          </a>
         </Card>
       </section>
 
       <p className="mx-auto mt-8 max-w-xl text-center text-sm leading-6 text-textSecondary">
         Need more pageviews? Self-host Metrika on your own server for unlimited scale.{" "}
         <a
-          href="https://github.com/"
+          href="https://github.com/fore-site/metrika/"
           target="_blank"
           rel="noreferrer"
           className="font-medium text-primary hover:underline"

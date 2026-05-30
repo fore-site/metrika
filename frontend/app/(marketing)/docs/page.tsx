@@ -55,9 +55,9 @@ export default function DocsPage() {
           <h2 className="font-heading text-xl font-semibold text-textPrimary">1. Create an account</h2>
           <p className="mt-2 text-sm leading-6 text-textSecondary">
             Sign up for a free Metrika account, verify your email, and you will be ready to add your first site.
-            <Link href="/register" className="ml-1 font-medium text-primary hover:underline">
+            <a href="/register" className="ml-1 font-medium text-primary hover:underline">
               Create an account
-            </Link>
+            </a>
             .
           </p>
         </section>

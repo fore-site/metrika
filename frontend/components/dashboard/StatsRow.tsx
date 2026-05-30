@@ -65,7 +65,7 @@ export function StatsRow(props: { current: SummaryData; previous?: SummaryData |
         trendPct={prev ? pctChange(props.current.bounce_rate, prev.bounce_rate) : null}
       />
       <StatCard
-        label="Views / Visit"
+        label="Views Per Visit"
         value={props.current.views_per_visit.toFixed(2)}
         trendPct={prev ? pctChange(props.current.views_per_visit, prev.views_per_visit) : null}
       />
