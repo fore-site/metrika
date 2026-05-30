@@ -19,7 +19,7 @@ export function TopNav() {
   const sp = useSearchParams();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
-    const menuRef = React.useRef<HTMLDivElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
 
   const sitesQuery = useQuery({
     queryKey: ["sites"],

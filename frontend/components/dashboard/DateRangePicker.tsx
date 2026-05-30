@@ -4,11 +4,11 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { setSearchParams } from "@/lib/url";
 
-type Preset = "24h" | "today" | "7d" | "31d" | "91d" | "month-to-date" | "year-to-date";
+type Preset = "24h" | "day" | "7d" | "31d" | "91d" | "month-to-date" | "year-to-date";
 
 function isPreset(v: string | null): v is Preset {
   return (
-    v === "24h" || v === "today" || v === "7d" || v === "31d" || v === "91d" ||
+    v === "24h" || v === "day" || v === "7d" || v === "31d" || v === "91d" ||
     v === "month-to-date" || v === "year-to-date"
   );
 }
@@ -20,7 +20,7 @@ export function DateRangePicker() {
 
   const interval = sp.get("interval");
   const isCustom = interval === "custom";
-  const preset: Preset = isPreset(interval) ? interval : "31d";
+  const preset: Preset = isPreset(interval) ? interval : "day";
 
   const [mode, setMode] = React.useState<"preset" | "custom">(isCustom ? "custom" : "preset");
   const [customStart, setCustomStart] = React.useState(sp.get("start") ?? "");
@@ -33,7 +33,7 @@ export function DateRangePicker() {
   }, [isCustom, sp]);
 
   const applyPreset = (value: Preset) => {
-    if (value === "today") {
+    if (value === "day") {
       const today = new Date().toISOString().slice(0, 10); // YYYY‑MM‑DD
       const next = setSearchParams(sp as unknown as URLSearchParams, {
         interval: "day",
@@ -99,7 +99,7 @@ export function DateRangePicker() {
             value={preset}
             onChange={(e) => applyPreset(e.target.value as Preset)}
           >
-            <option value="today">Today</option>
+            <option value="day">Today</option>
             <option value="24h">Last 24 hours</option>
             <option value="7d">Last 7 days</option>
             <option value="31d">Last 31 days</option>

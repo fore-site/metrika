@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
+import { Script } from "next/script";
 import "./globals.css";
 import { Providers } from "@/app/providers";
 
@@ -27,6 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body>
         <Providers>{children}</Providers>
+        <Script
+          strategy="beforeInteractive"
+          data-domain="metrika-five.vercel.app"
+          data-token="00ad7e68c12c4d1196183a034d03c6cf"
+          src="https://metrika-five.vercel.app/js/tracker.js"
+        />
       </body>
     </html>
   );

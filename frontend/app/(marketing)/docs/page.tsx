@@ -2,15 +2,17 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { toast } from "@/lib/toast";
 
+const frontendUrl = window.location.origin;
+
 const snippet = `<script async defer
   data-domain="example.com"
   data-token="abc123..."
-  src="https://your-analytics.com/js/tracker.js">
+  src="${frontendUrl}/js/tracker.js">
 </script>`;
 
 const metrics = [
@@ -30,6 +32,7 @@ const faqs = [
 
 export default function DocsPage() {
   const [copied, setCopied] = React.useState(false);
+  const [showInstructions, setShowInstructions] = React.useState(false);
 
   const copySnippet = async () => {
     await navigator.clipboard.writeText(snippet);
@@ -69,8 +72,8 @@ export default function DocsPage() {
             <div>
               <h2 className="font-heading text-xl font-semibold text-textPrimary">3. Install the snippet</h2>
               <p className="mt-2 text-sm leading-6 text-textSecondary">
-                Place the snippet before <code className="rounded bg-gray-100 px-1.5 py-0.5">{"</head>"}</code> on every
-                page you want to track.
+                Place the snippet before closing <code className="rounded bg-gray-100 px-1.5 py-0.5">{"</head>"}</code> on your base HTML or in an equivalent metadata 
+                in your jsx/tsx file.
               </p>
             </div>
             <Button variant="secondary" type="button" onClick={copySnippet}>
@@ -81,6 +84,59 @@ export default function DocsPage() {
           <pre className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-textPrimary">
             <code>{snippet}</code>
           </pre>
+
+          {/* Installation instructions */}
+          <button
+            className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline focus:outline-none"
+            onClick={() => setShowInstructions(!showInstructions)}
+          >
+            {showInstructions ? (
+              <>
+                <ChevronUp className="h-3 w-3" /> Hide instructions
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3 w-3" /> How to install
+              </>
+            )}
+          </button>
+
+          {showInstructions && (
+            <div className="mt-3 space-y-4 text-sm text-textSecondary">
+              <div>
+                <div className="font-medium text-textPrimary">Plain HTML</div>
+                <p className="mt-1">
+                  Paste the snippet just before the closing <code className="rounded bg-gray-50 px-1 text-xs">&lt;/head&gt;</code> tag in your HTML file.
+                </p>
+              </div>
+              <div>
+                <div className="font-medium text-textPrimary">WordPress</div>
+                <p className="mt-1">
+                  Install a plugin like “Insert Headers and Footers” or “WPCode”, then add the snippet in the header section.
+                </p>
+              </div>
+              <div>
+                <div className="font-medium text-textPrimary">Next.js</div>
+                <p className="mt-1">
+                  In your <code className="rounded bg-gray-50 px-1 text-xs">app/layout.tsx</code>, use the Next.js Script component:
+                </p>
+                <pre className="mt-2 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-textPrimary">
+{`<Script
+  strategy="beforeInteractive"
+  data-domain="example.com"
+  data-token="abc123..."
+  src="${frontendUrl}/js/tracker.js"
+/>`}
+                </pre>
+              </div>
+              <div>
+                <div className="font-medium text-textPrimary">Other platforms (Shopify, Squarespace, etc.)</div>
+                <p className="mt-1">
+                  Look for a “Custom Code” or “Header HTML” section in your site’s admin panel and paste the snippet there.
+                </p>
+              </div>
+            </div>
+          )}
         </section>
 
         <section>
@@ -119,4 +175,3 @@ export default function DocsPage() {
     </div>
   );
 }
-
