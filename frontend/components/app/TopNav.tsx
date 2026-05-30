@@ -20,6 +20,7 @@ export function TopNav() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
+  const toggleRef = React.useRef<HTMLButtonElement>(null);
 
   const sitesQuery = useQuery({
     queryKey: ["sites"],
@@ -43,12 +44,19 @@ export function TopNav() {
   React.useEffect(() => {
     if (!menuOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
+      if (toggleRef.current && toggleRef.current.contains(event.target as Node)) return;
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
       }
     };
+    const timeout = setTimeout(() => {
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, 0);
+
+    return () => {
+      clearTimeout(timeout);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [menuOpen]);
 
   const setSite = (id: string) => {
@@ -109,6 +117,7 @@ export function TopNav() {
 
           <div className="relative">
             <button
+              ref={toggleRef}
               className="inline-flex h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-textPrimary hover:bg-gray-50"
               onClick={() => setMenuOpen((v) => !v)}
               aria-label="Account menu"
@@ -117,7 +126,9 @@ export function TopNav() {
               <span className="hidden text-sm font-medium md:block">Account</span>
             </button>
             {menuOpen ? (
-              <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div
+                ref={menuRef} 
+                className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                 <Link
                   className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
                   href="/profile"

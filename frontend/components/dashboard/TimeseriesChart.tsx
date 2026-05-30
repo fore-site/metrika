@@ -14,11 +14,25 @@ import {
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatNumber } from "@/lib/format";
+import { parseISO, format } from "date-fns";
+
 export type TimeseriesPoint = {
   label: string;
   visitors: number;
   pageviews: number;
 };
+
+function formatLabel(raw: string): string {
+  try {
+    const dt = parseISO(raw);
+    if (raw.includes("T")) {
+      return format(dt, "MMM d, yyyy h:mm a"); 
+    }
+    return format(dt, "MMM d, yyyy");
+  } catch {
+    return raw;
+  }
+}
 
 export function TimeseriesChart(props: {
   data?: TimeseriesPoint[];
@@ -61,10 +75,11 @@ export function TimeseriesChart(props: {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="5 5" stroke="#E5E7EB" />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="#6B7280" />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="#6B7280" tickFormatter={(value) => formatLabel(String(value))} />
               <YAxis tick={{ fontSize: 12 }} stroke="#6B7280" tickFormatter={(v) => formatNumber(Number(v))} />
               <Tooltip
                 formatter={(value) => formatNumber(Number(value))}
+                labelFormatter={(label) => formatLabel(String(label))}
                 contentStyle={{ borderRadius: 12, borderColor: "#E5E7EB" }}
               />
               <Legend />
