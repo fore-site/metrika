@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { toast } from "@/lib/toast";
 
-const frontendUrl = window.location.origin;
+const frontendUrl =
+  process.env.NEXT_PUBLIC_FRONTEND_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "https://metrika-five.vercel.app");
 
 const snippet = `<script async defer
   data-domain="example.com"
