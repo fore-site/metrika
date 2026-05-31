@@ -91,13 +91,6 @@ export default function DashboardPage() {
     enabled: !!selectedSiteId,
   });
 
-  React.useEffect(() => {
-    if (summaryQuery.data) {
-      console.log('Current summary:', summaryQuery.data);
-      console.log('Previous summary:', prevSummaryQuery.data);
-    }
-  }, [summaryQuery.data, prevSummaryQuery.data]);
-
   // 4. Now the rendering – hooks are already registered
   const err = (e: unknown) => (e instanceof ApiError ? e.message : "Unable to load.");
 
