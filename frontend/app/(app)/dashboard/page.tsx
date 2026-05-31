@@ -111,13 +111,6 @@ export default function DashboardPage() {
     return <EmptyState title="Select a site" description="Choose a site from the selector to view analytics." />;
   }
 
-  React.useEffect(() => {
-    if (summaryQuery.data) {
-      console.log('Current summary:', summaryQuery.data);
-      console.log('Previous summary:', prevSummaryQuery.data);
-    }
-  }, [summaryQuery.data, prevSummaryQuery.data]);
-
   return (
     <div className="space-y-6">
 
@@ -128,6 +121,11 @@ export default function DashboardPage() {
       ) : summaryQuery.data ? (
         <StatsRow current={summaryQuery.data} previous={prevSummaryQuery.data} />
       ) : null}
+
+      if (summaryQuery.data) {
+        console.log('Current summary:', summaryQuery.data);
+        console.log('Previous summary:', prevSummaryQuery.data);
+      }
 
       <TimeseriesChart
         data={timeseriesData.map((d) => ({ label: d.date ?? d.hour ?? d.month ?? d.year ?? "", visitors: d.visitors }))}
