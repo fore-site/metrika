@@ -11,6 +11,7 @@ export function formatDurationSeconds(seconds: number) {
   const s = Math.max(0, Math.round(seconds));
   const mm = Math.floor(s / 60);
   const ss = s % 60;
-  return `${mm}:${String(ss).padStart(2, "0")}`;
+  if (mm === 0) return `${ss}s`;
+  return `${mm}m ${ss}s`;
 }
 

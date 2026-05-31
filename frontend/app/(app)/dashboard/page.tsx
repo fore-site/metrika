@@ -26,6 +26,7 @@ import { CreateSiteCard } from "@/components/dashboard/CreateSiteCard";
 import { getPreviousRange, toApiQuery } from "@/lib/dates";
 import { useDateRangeFromSearch } from "@/components/dashboard/useDashboardParams";
 import { ApiError } from "@/lib/errors";
+import * as React from "react";
 
 function buildStatsUrl(siteId: number, endpoint: string, query: Record<string, string>) {
   const params = new URLSearchParams(query);
@@ -110,8 +111,16 @@ export default function DashboardPage() {
     return <EmptyState title="Select a site" description="Choose a site from the selector to view analytics." />;
   }
 
+  React.useEffect(() => {
+    if (summaryQuery.data) {
+      console.log('Current summary:', summaryQuery.data);
+      console.log('Previous summary:', prevSummaryQuery.data);
+    }
+  }, [summaryQuery.data, prevSummaryQuery.data]);
+
   return (
     <div className="space-y-6">
+
       {summaryQuery.isLoading ? (
         <Card className="dot-grid h-32" />
       ) : summaryQuery.error ? (
