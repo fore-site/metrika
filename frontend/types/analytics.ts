@@ -8,7 +8,7 @@ export type SummaryData = {
 };
 
 export type TimeseriesEntry = {
-  date?: string;
+  day?: string;
   month?: string;
   year?: string;
   hour?: string;

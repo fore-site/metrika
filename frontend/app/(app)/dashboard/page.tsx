@@ -123,7 +123,7 @@ export default function DashboardPage() {
       ) : null}
 
       <TimeseriesChart
-        data={timeseriesData.map((d) => ({ label: d.date ?? d.hour ?? d.month ?? d.year ?? "", visitors: d.visitors }))}
+        data={timeseriesData.map((d) => ({ label: d.day ?? d.hour ?? d.month ?? d.year ?? "", visitors: d.visitors }))}
         precision={precision ?? "day"}   // fallback to 'day' if meta missing
         isLoading={timeseriesQuery.isLoading}
         error={timeseriesQuery.error ? err(timeseriesQuery.error) : null}
