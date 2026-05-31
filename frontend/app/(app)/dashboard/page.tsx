@@ -91,6 +91,13 @@ export default function DashboardPage() {
     enabled: !!selectedSiteId,
   });
 
+  React.useEffect(() => {
+    if (summaryQuery.data) {
+      console.log('Current summary:', summaryQuery.data);
+      console.log('Previous summary:', prevSummaryQuery.data);
+    }
+  }, [summaryQuery.data, prevSummaryQuery.data]);
+
   // 4. Now the rendering – hooks are already registered
   const err = (e: unknown) => (e instanceof ApiError ? e.message : "Unable to load.");
 
@@ -121,11 +128,6 @@ export default function DashboardPage() {
       ) : summaryQuery.data ? (
         <StatsRow current={summaryQuery.data} previous={prevSummaryQuery.data} />
       ) : null}
-
-      if (summaryQuery.data) {
-        console.log('Current summary:', summaryQuery.data);
-        console.log('Previous summary:', prevSummaryQuery.data);
-      }
 
       <TimeseriesChart
         data={timeseriesData.map((d) => ({ label: d.date ?? d.hour ?? d.month ?? d.year ?? "", visitors: d.visitors }))}
