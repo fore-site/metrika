@@ -126,7 +126,7 @@ function DemoBase() {
         {/* Timeseries Chart */}
         <TimeseriesChart
           data={timeseriesData.map((d) => ({
-            label: d.date ?? d.hour ?? d.month ?? d.year ?? "",
+            label: d.day ?? d.hour ?? d.month ?? d.year ?? "",
             visitors: d.visitors,
           }))}
           precision={precision ?? "day"}
