@@ -129,7 +129,7 @@ export function DateRangePicker() {
                 return "Unknown";
               })()
             }
-            className="min-w-max"
+            className="w-fit max-w-[220px]"
           >
             <button
               className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
