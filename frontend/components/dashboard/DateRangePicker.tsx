@@ -28,7 +28,12 @@ export function DateRangePicker() {
   const [customStart, setCustomStart] = React.useState(sp.get("start") ?? "");
   const [customEnd, setCustomEnd] = React.useState(sp.get("end") ?? "");
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
 
   React.useEffect(() => {
     setMode(isCustom ? "custom" : "preset");
@@ -36,12 +41,12 @@ export function DateRangePicker() {
     setCustomEnd(sp.get("end") ?? "");
   }, [isCustom, sp]);
 
-  const applyPreset = (value: Preset) => {
+  const applyPreset = (value: Preset, dayOverride?: string) => {
     if (value === "day") {
-      const today = new Date().toISOString().slice(0, 10); // YYYY‑MM‑DD
+      const day = dayOverride ?? new Date().toISOString().slice(0, 10); // YYYY‑MM‑DD
       const next = setSearchParams(sp as unknown as URLSearchParams, {
         interval: "day",
-        day: today,
+        day: day,
         start: null,
         end: null,
       });
@@ -108,7 +113,7 @@ export function DateRangePicker() {
                   if (!dayParam) return "Today";                 // fallback
                   // If the selected day is today, show "Today"
                   if (dayParam === todayStr) return "Today";
-                  // Otherwise show the formatted date (e.g., "May 20, 2026")
+                  if (dayParam === yesterdayStr) return "Yesterday";
                   try {
                     return format(parseISO(dayParam), "MMM d, yyyy");
                   } catch {
@@ -124,45 +129,51 @@ export function DateRangePicker() {
                 return "Unknown";
               })()
             }
+            className="min-w-max"
           >
             <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
               onClick={() => applyPreset("day")}
             >
               Today
             </button>
+            <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap" 
+            onClick={() => applyPreset("day", yesterdayStr)}
+            >
+              Yesterday
+            </button>
             <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
               onClick={() => applyPreset("24h")}
             >
               Last 24 hours
             </button>
             <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
               onClick={() => applyPreset("7d")}
             >
               Last 7 days
             </button>
             <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
               onClick={() => applyPreset("31d")}
             >
               Last 31 days
             </button>
             <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
               onClick={() => applyPreset("91d")}
             >
               Last 91 days
             </button>
             <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
               onClick={() => applyPreset("month-to-date")}
             >
               Month to date
             </button>
             <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 whitespace-nowrap"
               onClick={() => applyPreset("year-to-date")}
             >
               Year to date

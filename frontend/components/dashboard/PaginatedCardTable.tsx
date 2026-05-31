@@ -81,7 +81,7 @@ export function PaginatedCardTable<T>(props: {
         ) : previewRows.length === 0 ? (
           <EmptyState title="No data yet" description="Once traffic comes in, it will show up here." />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200">
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-xs text-textSecondary">
                 <tr>
@@ -127,7 +127,7 @@ export function PaginatedCardTable<T>(props: {
           <EmptyState title="No data" description="Nothing to show." />
         ) : (
           <>
-            <div className="overflow-hidden rounded-xl border border-gray-200">
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-textSecondary">
                   <tr>

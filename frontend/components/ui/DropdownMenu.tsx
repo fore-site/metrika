@@ -7,9 +7,10 @@ type DropdownMenuProps = {
   /** The label / value shown on the button when the menu is closed. */
   label: string;
   children: React.ReactNode;
+  className?: string;
 };
 
-export function DropdownMenu({ label, children }: DropdownMenuProps) {
+export function DropdownMenu({ label, children, className }: DropdownMenuProps) {
   const [open, setOpen] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -36,7 +37,7 @@ export function DropdownMenu({ label, children }: DropdownMenuProps) {
         <ChevronDown className="ml-2 h-4 w-4 flex-shrink-0 text-textSecondary" />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 z-40 mt-1 rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className={`absolute left-0 right-0 z-40 mt-1 rounded-xl border border-gray-200 bg-white shadow-sm ${className ?? ""}`}>
           <div className="py-1" onClick={() => setOpen(false)}>
             {children}
           </div>
