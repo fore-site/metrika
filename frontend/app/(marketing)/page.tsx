@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArrowRight, Shield, Gauge, Zap } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -29,14 +28,14 @@ export default function HomePage() {
               ship decisions faster.
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-              <Link href="/register" className="inline-flex">
+              <a href="/register" className="inline-flex">
                 <Button>
                   Get Started For Free <ArrowRight className="h-4 w-4" />
                 </Button>
-              </Link>
-              <Link href="/demo" className="inline-flex">
+              </a>
+              <a href="/demo" className="inline-flex">
                 <Button variant="secondary">View Live Demo</Button>
-              </Link>
+              </a>
             </div>
             <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Card className="p-4">
@@ -124,11 +123,11 @@ export default function HomePage() {
               <div className="mt-2 text-2xl font-semibold">Create your free account and ship smarter.</div>
               <div className="mt-2 text-sm text-textSecondary">Get set up in minutes.</div>
             </div>
-            <Link href="/register" className="inline-flex">
+            <a href="/register" className="inline-flex">
               <Button>
                 Create Free Account <ArrowRight className="h-4 w-4" />
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </section>
