@@ -16,6 +16,10 @@ from .views import (
     TopRegionsView,
     TopCitiesView,
 )
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class DemoBaseStatsView(BaseStatsView):
     """
@@ -34,6 +38,7 @@ class DemoBaseStatsView(BaseStatsView):
         try:
             return Site.objects.get(id=site_id, is_active=True)
         except Site.DoesNotExist:
+            logger.info(f'Site with id {site_id} does not exist')
             return None
 
 

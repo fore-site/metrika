@@ -71,7 +71,8 @@ REST_FRAMEWORK = {
         'user': '1000/hour',
         'tracking': '10000/hour',
         'login': '5/minute',
-        'password-reset': '3/hour'
+        'password-reset': '3/hour',
+        'demo': '100/hour',
     },
 }
 

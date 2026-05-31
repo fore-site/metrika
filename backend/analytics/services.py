@@ -730,11 +730,6 @@ class StatsQueryService:
         return timeseries
 
     def get_hourly_top_pages(self, site_id: int, start_dt: datetime, end_dt: datetime):
-        # Fetch raw events and strip query strings
-        events = (EventService().get_site_events_hour_range(site_id, start_dt, end_dt)
-            .values_list('url', flat=True)   # get list of URLs
-        )
-
         # Group by cleaned path
         path_pageviews = defaultdict(int)
         path_visitors = defaultdict(set)
