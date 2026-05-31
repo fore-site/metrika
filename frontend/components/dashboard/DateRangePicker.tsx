@@ -56,7 +56,7 @@ export function DateRangePicker() {
       router.replace(`${pathname}?${next.toString()}`);
       return;
     } else {
-      next.set("inteval", value);
+      next.set("interval", value);
     }
 
     router.replace(`${pathname}?${next.toString()}`);
