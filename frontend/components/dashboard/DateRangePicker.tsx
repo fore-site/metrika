@@ -4,7 +4,6 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { parseISO, format } from "date-fns";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
-import { setSearchParams } from "@/lib/url";
 
 type Preset = "24h" | "day" | "7d" | "31d" | "91d" | "month-to-date" | "year-to-date";
 
@@ -42,41 +41,47 @@ export function DateRangePicker() {
   }, [isCustom, sp]);
 
   const applyPreset = (value: Preset, dayOverride?: string) => {
+    const next = new URLSearchParams(sp as unknown as URLSearchParams);
+    
+    next.delete("interval");
+    next.delete("day");
+    next.delete("start");
+    next.delete("end");
+
     if (value === "day") {
       const day = dayOverride ?? new Date().toISOString().slice(0, 10); // YYYY‑MM‑DD
-      const next = setSearchParams(sp as unknown as URLSearchParams, {
-        interval: "day",
-        day: day,
-        start: null,
-        end: null,
-      });
+      next.set("interval", "day")
+      next.set("day", day)
+
       router.replace(`${pathname}?${next.toString()}`);
       return;
+    } else {
+      next.set("inteval", value);
     }
 
-    const next = setSearchParams(sp as unknown as URLSearchParams, { interval: value, start: null, end: null });
     router.replace(`${pathname}?${next.toString()}`);
   };
 
   const applyCustom = () => {
     if (!customStart || !customEnd) return;
 
+    const next = new URLSearchParams(sp as unknown as URLSearchParams);
+    
+    next.delete("interval");
+    next.delete("day");
+    next.delete("start");
+    next.delete("end");
+
     // Single‑day pick → use interval=day
     if (customStart === customEnd) {
-      const next = setSearchParams(sp as unknown as URLSearchParams, {
-        interval: "day",
-        day: customStart,
-        start: null,
-        end: null,
-      });
+      next.set("interval", "day");
+      next.set("day", customStart);
       router.replace(`${pathname}?${next.toString()}`);
       return;
     }
-    const next = setSearchParams(sp as unknown as URLSearchParams, {
-      interval: "custom",
-      start: customStart,
-      end: customEnd,
-    });
+    next.set("interval", "custom");
+    next.set("start", customStart);
+    next.set("end", customEnd);
     router.replace(`${pathname}?${next.toString()}`);
   };
 

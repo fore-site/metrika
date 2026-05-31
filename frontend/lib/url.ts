@@ -6,4 +6,3 @@ export function setSearchParams(current: URLSearchParams, patch: Record<string, 
   }
   return next;
 }
-
