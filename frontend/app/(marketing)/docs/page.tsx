@@ -106,9 +106,10 @@ export default function DocsPage() {
           {showInstructions && (
             <div className="mt-3 space-y-4 text-sm text-textSecondary">
               <div>
-                <div className="font-medium text-textPrimary">Plain HTML</div>
+                <div className="font-medium text-textPrimary">Plain HTML/Frameworks with index.html entry</div>
                 <p className="mt-1">
-                  Paste the snippet just before the closing <code className="rounded bg-gray-50 px-1 text-xs">&lt;/head&gt;</code> tag in your HTML file.
+                  Paste the snippet just before the closing <code className="rounded bg-gray-50 px-1 text-xs">&lt;/head&gt;</code> tag in your 
+                  site's main <code className="rounded bg-gray-50 px-1 text-xs">index.html</code> or equivalent main HTML entry file.
                 </p>
               </div>
               <div>
