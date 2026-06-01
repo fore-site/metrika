@@ -76,13 +76,6 @@ The app is then available at `http://localhost:8000` and the Swagger docs at `/a
 - `GET /api/stats/<site_id>/summary/` — site analytics summary
 - `GET /metrics/dashboard` — Human readable prometheus metrics
 
-## Roadmap
-
-- Next.js frontend dashboard for authenticated analytics consumers
-- real-time event visualization and custom reporting widgets
-- client-side tracking snippet generator and site onboarding flow
-- production deployment automation with container orchestration
-
 ## Testing
 
 ```bash
